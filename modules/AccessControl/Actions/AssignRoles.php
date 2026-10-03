@@ -16,12 +16,22 @@ final class AssignRoles
     {
         $before = $this->slugs($user);
 
-        if ($by !== null && $by->is($user)) {
-            $superIds = Role::query()->where('is_super', true)->pluck('id')->all();
-            $hadSuper = $user->roles()->whereIn('roles.id', $superIds)->exists();
+        $superIds = Role::query()->where('is_super', true)->pluck('id')->all();
+        $currentSuperIds = $user->roles()->whereIn('roles.id', $superIds)->pluck('roles.id')->all();
+        $newSuperIds = array_values(array_intersect($superIds, $roleIds));
+        $superChanged = array_diff($currentSuperIds, $newSuperIds) !== [] || array_diff($newSuperIds, $currentSuperIds) !== [];
 
-            if ($hadSuper && array_intersect($superIds, $roleIds) === []) {
+        if ($superChanged && $by !== null && ! $by->isSuper()) {
+            throw new DomainException(__('Only a super administrator can grant or revoke the administrator role.'), 'roles');
+        }
+
+        if ($currentSuperIds !== [] && $newSuperIds === []) {
+            if ($by !== null && $by->is($user)) {
                 throw new DomainException(__('You cannot remove your own administrator role.'));
+            }
+
+            if ($user->is_active && ! $this->otherActiveSuperExists($user)) {
+                throw new DomainException(__('At least one active super administrator is required.'), 'roles');
             }
         }
 
@@ -31,6 +41,15 @@ final class AssignRoles
         $after = $this->slugs($user);
 
         RolesAssigned::dispatch($user, $before, $after, $by);
+    }
+
+    private function otherActiveSuperExists(User $user): bool
+    {
+        return User::query()
+            ->where('is_active', true)
+            ->whereKeyNot($user->id)
+            ->whereHas('roles', fn ($q) => $q->where('is_super', true))
+            ->exists();
     }
 
     /**

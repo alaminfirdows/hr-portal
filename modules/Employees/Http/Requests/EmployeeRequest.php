@@ -13,7 +13,12 @@ final class EmployeeRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return true; // controller authorizes with scope
+        /** @var Employee|null $employee */
+        $employee = $this->route('employee');
+
+        return $employee instanceof Employee
+            ? (bool) $this->user()?->can('employees.update', $employee)
+            : (bool) $this->user()?->can('employees.create');
     }
 
     /**

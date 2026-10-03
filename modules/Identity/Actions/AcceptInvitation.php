@@ -12,9 +12,15 @@ final class AcceptInvitation
 {
     public function handle(string $token, string $password): User
     {
-        $invitation = $this->find($token);
+        $found = $this->find($token);
 
-        $user = DB::transaction(function () use ($invitation, $password): User {
+        $user = DB::transaction(function () use ($found, $password): User {
+            $invitation = Invitation::query()->with('user')->lockForUpdate()->find($found->id);
+
+            if ($invitation === null || ! $invitation->isUsable()) {
+                throw new DomainException(__('This invitation link is invalid or has expired.'), 'token');
+            }
+
             $invitation->forceFill(['accepted_at' => now()])->save();
 
             $user = $invitation->user;

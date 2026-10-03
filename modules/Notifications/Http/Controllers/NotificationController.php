@@ -37,7 +37,27 @@ final class NotificationController extends Controller
         /** @var string|null $url */
         $url = $notification->data['url'] ?? null;
 
-        return $url ? redirect()->to($url) : to_route('notifications.index');
+        return $url !== null && $this->isLocal($request, $url) ? redirect()->to($url) : to_route('notifications.index');
+    }
+
+    /**
+     * Accept only relative paths or same-host absolute URLs.
+     */
+    private function isLocal(Request $request, string $url): bool
+    {
+        if ($url === '' || preg_match('/[\\x00-\\x1f\\\\]/', $url) === 1) {
+            return false;
+        }
+
+        if (str_starts_with($url, '/')) {
+            return ! str_starts_with($url, '//');
+        }
+
+        $parts = parse_url($url);
+
+        return $parts !== false
+            && in_array($parts['scheme'] ?? null, ['http', 'https'], true)
+            && strcasecmp($parts['host'] ?? '', $request->getHost()) === 0;
     }
 
     public function read(Request $request, string $id): RedirectResponse
