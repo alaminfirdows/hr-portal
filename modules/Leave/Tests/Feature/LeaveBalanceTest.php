@@ -1,6 +1,7 @@
 <?php
 
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Facades\DB;
 use Modules\Employees\Models\Employee;
 use Modules\Leave\Actions\AccrueMonthlyBalances;
 use Modules\Leave\Actions\AdjustBalance;
@@ -116,4 +117,50 @@ test('hr adjusts balance over http, employee cannot', function () {
 
     expect(app(LeaveBalanceService::class)->available($employee, $type, 2026))->toBe(8.0);
     $this->actingAs(userWithRole('hr'))->get(route('leave.balances.index'))->assertOk();
+});
+
+test('balances page rejects years outside the current window and writes nothing', function () {
+    Employee::factory()->create(['joined_on' => '2020-01-01']);
+    LeaveType::factory()->create(['annual_quota' => 10]);
+
+    $this->actingAs(userWithRole('hr'))->get(route('leave.balances.index', ['year' => 2099]))->assertSessionHasErrors('year');
+    $this->actingAs(userWithRole('hr'))->get(route('leave.balances.index', ['year' => 2000]))->assertSessionHasErrors('year');
+
+    expect(LeaveBalance::query()->count())->toBe(0);
+});
+
+test('viewing balances never creates rows and shows previewed entitlement', function () {
+    $employee = Employee::factory()->create(['joined_on' => '2020-01-01']);
+    LeaveType::factory()->create(['annual_quota' => 10]);
+
+    $this->actingAs(userWithRole('hr'))->get(route('leave.balances.index', ['year' => 2027]))
+        ->assertOk()
+        ->assertInertia(fn ($p) => $p->where('employees.data.0.balances.0.entitled', 10));
+
+    expect(LeaveBalance::query()->where('employee_id', $employee->id)->count())->toBe(0);
+});
+
+test('balances page loads balances and types with a fixed number of queries', function () {
+    LeaveType::factory()->count(3)->create(['annual_quota' => 10]);
+    Employee::factory()->count(12)->create(['joined_on' => '2020-01-01']);
+    $hr = userWithRole('hr');
+
+    DB::enableQueryLog();
+    $this->actingAs($hr)->get(route('leave.balances.index'))->assertOk();
+    $queries = collect(DB::getQueryLog())->pluck('query');
+
+    expect($queries->filter(fn (string $q) => str_contains($q, 'from "leave_balances"'))->count())->toBe(1)
+        ->and($queries->filter(fn (string $q) => str_contains($q, 'from "employees" where "id"'))->count())->toBe(0);
+});
+
+test('adjustments accumulate on the locked row', function () {
+    $employee = Employee::factory()->create(['joined_on' => '2020-01-01']);
+    $type = LeaveType::factory()->create(['annual_quota' => 10]);
+    $action = app(AdjustBalance::class);
+
+    $action->handle($employee, $type, 2026, 2.0, 'one');
+    $second = $action->handle($employee, $type, 2026, 1.5, 'two');
+
+    expect($second->adjustment)->toBe(3.5)
+        ->and(LeaveBalance::query()->where('employee_id', $employee->id)->value('adjustment'))->toBe(3.5);
 });

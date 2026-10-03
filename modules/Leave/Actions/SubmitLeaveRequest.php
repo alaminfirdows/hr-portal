@@ -19,6 +19,7 @@ use Modules\Leave\Services\LeaveBalanceService;
 use Modules\Leave\Services\LeaveDayCalculator;
 use Modules\Leave\Services\LeaveNotifier;
 use Modules\Shared\Exceptions\DomainException;
+use Throwable;
 
 /**
  * Validates business rules, reserves balance (pending += days) and starts the approval flow.
@@ -49,42 +50,60 @@ final class SubmitLeaveRequest
         $part = DayPart::tryFrom($data['day_part'] ?? 'full') ?? DayPart::Full;
         $attachment = $data['attachment'] ?? null;
 
-        $days = $this->validate($employee, $type, $start, $end, $part, $attachment !== null);
+        $days = $this->validate($type, $start, $end, $part, $attachment !== null);
 
-        $request = DB::transaction(function () use ($employee, $type, $start, $end, $part, $days, $data, $attachment): LeaveRequest {
-            $balance = $this->balances->balance($employee, $type, $start->year);
-            $locked = LeaveBalance::query()->lockForUpdate()->findOrFail($balance->id);
+        $path = null;
 
-            if (! $type->isUnlimited() && $days > $locked->available()) {
-                throw new DomainException(__('Insufficient balance: :available day(s) available, :days requested.', [
-                    'available' => $locked->available(),
+        try {
+            $request = DB::transaction(function () use ($employee, $type, $start, $end, $part, $days, $data, $attachment, &$path): LeaveRequest {
+                // Serialise this employee's submissions so the overlap check and the insert are atomic.
+                Employee::query()->lockForUpdate()->findOrFail($employee->id);
+
+                $this->assertNoOverlap($employee, $start, $end);
+
+                $balance = $this->balances->balance($employee, $type, $start->year);
+                $locked = LeaveBalance::query()->lockForUpdate()->findOrFail($balance->id);
+
+                if (! $type->isUnlimited() && $days > $locked->available()) {
+                    throw new DomainException(__('Insufficient balance: :available day(s) available, :days requested.', [
+                        'available' => $locked->available(),
+                        'days' => $days,
+                    ]), 'start_date');
+                }
+
+                $steps = $this->flow->resolveSteps($employee, $type);
+
+                $path = $attachment instanceof UploadedFile
+                    ? Storage::disk(config('filesystems.default'))->putFile('leave-attachments', $attachment)
+                    : null;
+
+                $request = LeaveRequest::query()->create([
+                    'employee_id' => $employee->id,
+                    'leave_type_id' => $type->id,
+                    'start_date' => $start,
+                    'end_date' => $end,
+                    'day_part' => $part,
                     'days' => $days,
-                ]), 'start_date');
+                    'reason' => $data['reason'] ?? null,
+                    'attachment_path' => $path ?: null,
+                    'status' => LeaveStatus::Pending,
+                    'steps' => $steps,
+                    'current_step' => 0,
+                ]);
+
+                $locked->pending = round($locked->pending + $days, 2);
+                $locked->save();
+
+                return $request;
+            });
+        } catch (Throwable $e) {
+            // The transaction rolled back; do not leave the uploaded file orphaned.
+            if (is_string($path) && $path !== '') {
+                Storage::disk(config('filesystems.default'))->delete($path);
             }
 
-            $path = $attachment instanceof UploadedFile
-                ? Storage::disk(config('filesystems.default'))->putFile('leave-attachments', $attachment)
-                : null;
-
-            $request = LeaveRequest::query()->create([
-                'employee_id' => $employee->id,
-                'leave_type_id' => $type->id,
-                'start_date' => $start,
-                'end_date' => $end,
-                'day_part' => $part,
-                'days' => $days,
-                'reason' => $data['reason'] ?? null,
-                'attachment_path' => $path ?: null,
-                'status' => LeaveStatus::Pending,
-                'steps' => $this->flow->resolveSteps($employee, $type),
-                'current_step' => 0,
-            ]);
-
-            $locked->pending = round($locked->pending + $days, 2);
-            $locked->save();
-
-            return $request;
-        });
+            throw $e;
+        }
 
         $request->setRelation('employee', $employee);
         $request->setRelation('type', $type);
@@ -100,7 +119,24 @@ final class SubmitLeaveRequest
         return $request;
     }
 
-    private function validate(Employee $employee, LeaveType $type, CarbonImmutable $start, CarbonImmutable $end, DayPart $part, bool $hasAttachment): float
+    private function assertNoOverlap(Employee $employee, CarbonImmutable $start, CarbonImmutable $end): void
+    {
+        $overlap = LeaveRequest::query()
+            ->where('employee_id', $employee->id)
+            ->active()
+            ->overlapping($start, $end)
+            ->first();
+
+        if ($overlap !== null) {
+            throw new DomainException(__('You already have a :status leave request from :from to :to that overlaps these dates.', [
+                'status' => $overlap->status->value,
+                'from' => $overlap->start_date->toFormattedDateString(),
+                'to' => $overlap->end_date->toFormattedDateString(),
+            ]), 'start_date');
+        }
+    }
+
+    private function validate(LeaveType $type, CarbonImmutable $start, CarbonImmutable $end, DayPart $part, bool $hasAttachment): float
     {
         if ($end->lt($start)) {
             throw new DomainException(__('The end date cannot be before the start date.'), 'end_date');
@@ -128,20 +164,6 @@ final class SubmitLeaveRequest
 
         if ($days <= 0) {
             throw new DomainException(__('The selected dates contain no working days.'), 'start_date');
-        }
-
-        $overlap = LeaveRequest::query()
-            ->where('employee_id', $employee->id)
-            ->active()
-            ->overlapping($start, $end)
-            ->first();
-
-        if ($overlap !== null) {
-            throw new DomainException(__('You already have a :status leave request from :from to :to that overlaps these dates.', [
-                'status' => $overlap->status->value,
-                'from' => $overlap->start_date->toFormattedDateString(),
-                'to' => $overlap->end_date->toFormattedDateString(),
-            ]), 'start_date');
         }
 
         if ($type->max_consecutive_days !== null && $start->diffInDays($end) + 1 > $type->max_consecutive_days) {

@@ -72,17 +72,40 @@ final class LeaveBalanceAllocator
             return 0.0;
         }
 
-        $previous = LeaveBalance::query()
+        return $this->carryFrom($type, LeaveBalance::query()
             ->where('employee_id', $employee->id)
             ->where('leave_type_id', $type->id)
             ->where('year', $year - 1)
-            ->first();
+            ->first());
+    }
 
-        if ($previous === null) {
+    /**
+     * Carry forward from an already loaded previous-year row.
+     */
+    public function carryFrom(LeaveType $type, ?LeaveBalance $previous): float
+    {
+        if ($type->accrual_method === AccrualMethod::None || $type->carry_forward_cap <= 0 || $previous === null) {
             return 0.0;
         }
 
         return round(min(max($previous->available(), 0.0), $type->carry_forward_cap), 2);
+    }
+
+    /**
+     * An unsaved balance with the starting values allocate() would create. Reads use this so they never write.
+     */
+    public function preview(Employee $employee, LeaveType $type, int $year, ?LeaveBalance $previous): LeaveBalance
+    {
+        return new LeaveBalance([
+            'employee_id' => $employee->id,
+            'leave_type_id' => $type->id,
+            'year' => $year,
+            'entitled' => $this->entitlement($employee, $type, $year),
+            'carried_forward' => $this->carryFrom($type, $previous),
+            'adjustment' => 0.0,
+            'used' => 0.0,
+            'pending' => 0.0,
+        ]);
     }
 
     /**

@@ -447,3 +447,28 @@ test('demo seeder builds history', function () {
         ->and(AttendanceRecord::query()->count())->toBeGreaterThan(40)
         ->and(User::query()->count())->toBeGreaterThan(0);
 });
+
+test('the only default shift cannot be unset', function () {
+    $hr = userWithRole('hr');
+    $default = Shift::factory()->default()->create();
+
+    $this->actingAs($hr)->put(route('attendance.shifts.update', $default), [
+        'name' => $default->name, 'start_time' => '09:00', 'end_time' => '18:00', 'grace_minutes' => 10,
+        'half_day_minutes' => 240, 'overtime_after_minutes' => 540, 'is_default' => false, 'is_active' => true,
+    ])->assertSessionHasErrors('is_default');
+
+    expect($default->fresh()->is_default)->toBeTrue();
+});
+
+test('a shift with assigned employees cannot be deleted', function () {
+    $hr = userWithRole('hr');
+    Shift::factory()->default()->create();
+    $night = Shift::factory()->create();
+    $e = Employee::factory()->create();
+    EmployeeShift::query()->create(['employee_id' => $e->id, 'shift_id' => $night->id]);
+
+    $this->actingAs($hr)->delete(route('attendance.shifts.destroy', $night))->assertSessionHasErrors('shift');
+
+    expect(Shift::query()->whereKey($night->id)->exists())->toBeTrue()
+        ->and(EmployeeShift::query()->where('employee_id', $e->id)->exists())->toBeTrue();
+});

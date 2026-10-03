@@ -341,3 +341,26 @@ test('unpaid leave days count only unpaid types', function () {
     expect(app(LeaveCalendar::class)
         ->unpaidLeaveDays($e->id, CarbonImmutable::parse('2026-03-01'), CarbonImmutable::parse('2026-03-31')))->toBe(3.0);
 });
+
+test('overlapping request is rejected inside the transaction without reserving balance twice', function () {
+    ['employee' => $e, 'type' => $t] = leaveStaff();
+
+    submitLeave($e, $t, '2026-03-10', '2026-03-11');
+    expect(fn () => submitLeave($e, $t, '2026-03-11', '2026-03-12'))->toThrow(DomainException::class);
+
+    expect(balanceOf($e, $t)->pending)->toBe(2.0)
+        ->and(LeaveRequest::query()->where('employee_id', $e->id)->count())->toBe(1);
+});
+
+test('attachment is removed when the submission fails after it was stored', function () {
+    Storage::fake(config('filesystems.default'));
+    ['employee' => $e, 'type' => $t] = leaveStaff(['requires_attachment' => true]);
+
+    Event::listen('eloquent.created: '.LeaveRequest::class, fn () => throw new RuntimeException('boom'));
+
+    expect(fn () => submitLeave($e, $t, '2026-03-10', null, ['attachment' => UploadedFile::fake()->create('note.pdf', 10, 'application/pdf')]))
+        ->toThrow(RuntimeException::class);
+
+    expect(Storage::disk(config('filesystems.default'))->allFiles())->toBe([])
+        ->and(LeaveRequest::query()->count())->toBe(0);
+});

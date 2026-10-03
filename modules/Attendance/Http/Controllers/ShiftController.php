@@ -53,7 +53,15 @@ final class ShiftController extends Controller
     public function update(ShiftRequest $request, Shift $shift): RedirectResponse
     {
         DB::transaction(function () use ($request, $shift): void {
-            $shift->update($this->attributes($request));
+            $shift->setRawAttributes(Shift::query()->lockForUpdate()->findOrFail($shift->id)->getAttributes(), true);
+
+            $attributes = $this->attributes($request);
+
+            if ($shift->is_default && ! $attributes['is_default']) {
+                throw new DomainException(__('A default shift is required. Make another shift the default instead.'), 'is_default');
+            }
+
+            $shift->update($attributes);
             $this->enforceDefault($shift);
         });
 
@@ -68,6 +76,10 @@ final class ShiftController extends Controller
 
         if ($shift->is_default) {
             throw new DomainException(__('The default shift cannot be deleted. Make another shift the default first.'), 'shift');
+        }
+
+        if (EmployeeShift::query()->where('shift_id', $shift->id)->exists()) {
+            throw new DomainException(__('This shift has employees assigned. Assign them to another shift first.'), 'shift');
         }
 
         $shift->delete();
@@ -86,9 +98,11 @@ final class ShiftController extends Controller
             'employee_ids.*' => ['integer', Rule::exists('employees', 'id')],
         ]);
 
-        foreach ($data['employee_ids'] as $employeeId) {
-            EmployeeShift::query()->updateOrCreate(['employee_id' => $employeeId], ['shift_id' => $shift->id]);
-        }
+        DB::transaction(function () use ($data, $shift): void {
+            foreach ($data['employee_ids'] as $employeeId) {
+                EmployeeShift::query()->updateOrCreate(['employee_id' => $employeeId], ['shift_id' => $shift->id]);
+            }
+        });
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Employees assigned.')]);
 

@@ -2,6 +2,7 @@
 
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Notification;
 use Modules\Employees\Models\Employee;
 use Modules\Identity\Models\User;
@@ -10,6 +11,7 @@ use Modules\Payroll\Actions\CalculatePayrollRun;
 use Modules\Payroll\Actions\CreatePayrollRun;
 use Modules\Payroll\Actions\MarkReviewed;
 use Modules\Payroll\Actions\ProcessPayrollRun;
+use Modules\Payroll\Actions\SaveCompensation;
 use Modules\Payroll\Enums\PayrollRunStatus;
 use Modules\Payroll\Models\Compensation;
 use Modules\Payroll\Models\PayComponent;
@@ -22,6 +24,8 @@ use Modules\Payroll\Widgets\PayrollStatusWidget;
 use Modules\Shared\Contracts\AttendanceSummary;
 use Modules\Shared\Contracts\LeaveCalendar;
 use Modules\Shared\Exceptions\DomainException;
+use Modules\Shared\Exceptions\InvalidStateTransition;
+use Modules\Shared\ValueObjects\Money;
 
 const PERIOD = '2026-09';
 
@@ -402,4 +406,96 @@ test('dashboard widgets show the latest payslip and payroll status', function ()
     expect($status->visible(userWithRole('hr')))->toBeTrue()
         ->and($status->visible($user))->toBeFalse()
         ->and($status->data(userWithRole('hr'))['value'])->toBe('Not started');
+});
+
+// --- Integrity: transitions re-check on a locked, fresh row ----------------------------------
+
+test('processing with a stale instance a second time is rejected and notifies once', function () {
+    Notification::fake();
+    $hr = userWithRole('hr');
+    $admin = userWithRole('admin');
+    $user = userWithRole('employee', ['joined_on' => '2025-01-01']);
+    Compensation::factory()->create(['employee_id' => employeeOf($user)->id, 'effective_from' => '2025-01-01']);
+
+    $run = calculatedRun($hr);
+    app(MarkReviewed::class)->handle($run, $hr);
+    app(ApprovePayrollRun::class)->handle($run->refresh(), $admin);
+
+    $first = PayrollRun::query()->findOrFail($run->id);
+    $stale = PayrollRun::query()->findOrFail($run->id);
+
+    app(ProcessPayrollRun::class)->handle($first, $admin);
+    expect(fn () => app(ProcessPayrollRun::class)->handle($stale, $admin))->toThrow(InvalidStateTransition::class);
+
+    Notification::assertSentToTimes($user, PayslipAvailable::class, 1);
+});
+
+test('approving with a stale instance after a recalculation is rejected', function () {
+    $hr = userWithRole('hr');
+    $admin = userWithRole('admin');
+    paidEmployee();
+
+    $run = calculatedRun($hr);
+    app(MarkReviewed::class)->handle($run, $hr);
+
+    $stale = PayrollRun::query()->findOrFail($run->id);
+    app(CalculatePayrollRun::class)->handle(PayrollRun::query()->findOrFail($run->id), $hr);
+
+    expect(fn () => app(ApprovePayrollRun::class)->handle($stale, $admin))->toThrow(InvalidStateTransition::class)
+        ->and($run->fresh()->status)->toBe(PayrollRunStatus::Calculated);
+});
+
+test('reviewing with a stale instance after approval is rejected', function () {
+    $hr = userWithRole('hr');
+    $admin = userWithRole('admin');
+    paidEmployee();
+
+    $run = calculatedRun($hr);
+    $stale = PayrollRun::query()->findOrFail($run->id);
+    app(MarkReviewed::class)->handle(PayrollRun::query()->findOrFail($run->id), $hr);
+    app(ApprovePayrollRun::class)->handle(PayrollRun::query()->findOrFail($run->id), $admin);
+
+    expect(fn () => app(MarkReviewed::class)->handle($stale, $hr))->toThrow(InvalidStateTransition::class)
+        ->and($run->fresh()->status)->toBe(PayrollRunStatus::Approved);
+});
+
+test('calculating with a stale instance after approval is rejected', function () {
+    $hr = userWithRole('hr');
+    $admin = userWithRole('admin');
+    paidEmployee();
+
+    $run = calculatedRun($hr);
+    app(MarkReviewed::class)->handle(PayrollRun::query()->findOrFail($run->id), $hr);
+    $stale = PayrollRun::query()->findOrFail($run->id);
+    app(ApprovePayrollRun::class)->handle(PayrollRun::query()->findOrFail($run->id), $admin);
+
+    expect(fn () => app(CalculatePayrollRun::class)->handle($stale, $hr))->toThrow(InvalidStateTransition::class);
+});
+
+test('duplicate compensation effective date is a validation error', function () {
+    $hr = userWithRole('hr');
+    $employee = paidEmployee(300000, ['joined_on' => '2025-01-01']);
+    $payload = ['basic_salary' => '4000', 'effective_from' => '2026-07-01'];
+
+    $this->actingAs($hr)->post(route('payroll.employees.compensations.store', $employee), $payload)->assertSessionHasNoErrors();
+    $this->actingAs($hr)->post(route('payroll.employees.compensations.store', $employee), $payload)->assertSessionHasErrors('effective_from');
+
+    expect(Compensation::query()->where('employee_id', $employee->id)->count())->toBe(2);
+});
+
+test('compensation table enforces one row per employee and effective date', function () {
+    $employee = paidEmployee(300000, ['joined_on' => '2025-01-01']);
+
+    expect(fn () => Compensation::factory()->create(['employee_id' => $employee->id, 'effective_from' => '2025-01-01']))
+        ->toThrow(QueryException::class);
+});
+
+test('saving a compensation with a stale latest row is rejected inside the transaction', function () {
+    $employee = paidEmployee(300000, ['joined_on' => '2025-01-01']);
+    $action = app(SaveCompensation::class);
+
+    $action->handle($employee, Money::of(400000), CarbonImmutable::parse('2026-07-01'), null);
+
+    expect(fn () => $action->handle($employee, Money::of(500000), CarbonImmutable::parse('2026-06-01'), null))
+        ->toThrow(DomainException::class);
 });
