@@ -191,3 +191,12 @@ test('photo is private and served through auth', function () {
     auth()->logout();
     $this->get(route('employees.photo', $e))->assertRedirect(route('login'));
 });
+
+test('employee page exposes the documents tab only with documents.view', function () {
+    $target = employeeOf(userWithRole('employee'));
+    $withDocs = userWithPermissions(['employees.view' => 'all', 'documents.view' => 'all']);
+    $without = userWithPermissions(['employees.view' => 'all']);
+
+    $this->actingAs($withDocs)->get(route('employees.show', $target))->assertInertia(fn ($page) => $page->where('can.documents', true));
+    $this->actingAs($without)->get(route('employees.show', $target))->assertInertia(fn ($page) => $page->where('can.documents', false));
+});

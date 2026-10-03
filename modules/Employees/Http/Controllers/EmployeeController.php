@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -112,6 +113,8 @@ final class EmployeeController extends Controller
             'can' => [
                 'update' => Gate::allows('employees.update', $employee),
                 'status' => Gate::allows('employees.status', $employee),
+                // Documents tab is contributed by the Documents module (JSON endpoint applies its own visibility rules).
+                'documents' => Route::has('documents.employee') && Gate::allows('documents.view'),
                 'invite' => Gate::allows('employees.create') && ! $employee->user?->is_active && $employee->status !== EmployeeStatus::Terminated,
             ],
         ]);

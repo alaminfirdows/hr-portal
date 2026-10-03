@@ -25,6 +25,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { formatDate, formatDateTime } from '@/lib/format';
 import { edit, index, show } from '@/routes/employees';
 import type { Option } from '@/types';
+import { EmployeeDocuments } from '../../components/employee-documents';
 import { PhotoUpload } from '../../components/photo-upload';
 import type { EmergencyContact } from '../../components/profile-fields';
 import { STATUS_COLORS } from '../../components/status';
@@ -79,7 +80,12 @@ type Props = {
     reports: { id: number; full_name: string }[];
     history: HistoryEntry[];
     statuses: Option<string>[];
-    can: { update: boolean; status: boolean; invite: boolean };
+    can: {
+        update: boolean;
+        status: boolean;
+        invite: boolean;
+        documents: boolean;
+    };
 };
 
 function humanize(value: string): string {
@@ -267,6 +273,9 @@ export default function EmployeeShow({
                     <TabsTrigger value="reports">
                         Reports ({reports.length})
                     </TabsTrigger>
+                    {can.documents && (
+                        <TabsTrigger value="documents">Documents</TabsTrigger>
+                    )}
                     <TabsTrigger value="history">History</TabsTrigger>
                 </TabsList>
 
@@ -422,6 +431,12 @@ export default function EmployeeShow({
                         </ul>
                     )}
                 </TabsContent>
+
+                {can.documents && (
+                    <TabsContent value="documents">
+                        <EmployeeDocuments employeeId={employee.id} />
+                    </TabsContent>
+                )}
 
                 <TabsContent value="history">
                     {history.length === 0 ? (

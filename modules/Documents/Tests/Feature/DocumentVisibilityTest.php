@@ -26,6 +26,11 @@ function fakeProjects(array $membership): void
         {
             return $this->membership[$employeeId] ?? [];
         }
+
+        public function optionsFor(User $user): array
+        {
+            return [];
+        }
     });
 }
 

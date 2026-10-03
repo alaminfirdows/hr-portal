@@ -2,6 +2,7 @@
 
 namespace Modules\Projects\Services;
 
+use Modules\Identity\Models\User;
 use Modules\Projects\Models\Project;
 use Modules\Projects\Models\ProjectMember;
 use Modules\Shared\Contracts\ProjectMembership;
@@ -20,5 +21,16 @@ final class EloquentProjectMembership implements ProjectMembership
     public function projectIdsFor(int $employeeId): array
     {
         return array_values(Project::query()->involving($employeeId)->pluck('projects.id')->map(fn ($id) => (int) $id)->all());
+    }
+
+    public function optionsFor(User $user): array
+    {
+        $options = [];
+
+        foreach (Project::query()->visibleTo($user)->orderBy('name')->get(['projects.id', 'projects.name']) as $project) {
+            $options[] = ['value' => (int) $project->id, 'label' => (string) $project->name];
+        }
+
+        return $options;
     }
 }

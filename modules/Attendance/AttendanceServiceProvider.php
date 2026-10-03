@@ -26,7 +26,7 @@ class AttendanceServiceProvider extends ModuleServiceProvider
 
     public function seedOrder(): int
     {
-        return 70;
+        return 65;
     }
 
     public function permissions(): array

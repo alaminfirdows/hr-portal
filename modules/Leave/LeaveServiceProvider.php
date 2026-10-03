@@ -23,7 +23,7 @@ class LeaveServiceProvider extends ModuleServiceProvider
 
     public function seedOrder(): int
     {
-        return 60;
+        return 62;
     }
 
     public function permissions(): array
