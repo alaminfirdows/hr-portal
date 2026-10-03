@@ -9,6 +9,7 @@ use Modules\Employees\Services\EloquentOrgHierarchy;
 use Modules\Employees\Widgets\HeadcountWidget;
 use Modules\Employees\Widgets\MyTeamWidget;
 use Modules\Employees\Widgets\NewJoinersWidget;
+use Modules\Employees\Widgets\UpcomingBirthdaysWidget;
 use Modules\Identity\Events\InvitationAccepted;
 use Modules\Organization\Models\Department;
 use Modules\Organization\Models\Team;
@@ -50,7 +51,7 @@ class EmployeesServiceProvider extends ModuleServiceProvider
 
     public function dashboardWidgets(): array
     {
-        return [HeadcountWidget::class, NewJoinersWidget::class, MyTeamWidget::class];
+        return [HeadcountWidget::class, NewJoinersWidget::class, MyTeamWidget::class, UpcomingBirthdaysWidget::class];
     }
 
     public function demoSeeders(): array
