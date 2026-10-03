@@ -438,7 +438,7 @@ test('dashboard widgets render for employee and hr', function () {
 });
 
 test('demo seeder builds history', function () {
-    userWithRole('hr');
+    userWithRole('hr', ['joined_on' => '2024-01-01']);
     attendee();
 
     $this->seed(AttendanceDemoSeeder::class);

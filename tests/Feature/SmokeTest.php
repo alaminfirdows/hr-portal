@@ -1,12 +1,12 @@
 <?php
 
+use App\Http\Middleware\HandleInertiaRequests;
 use Database\Seeders\DemoSeeder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Routing\Route as RoutingRoute;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
-use Inertia\Inertia;
 use Modules\Identity\Models\User;
 use Modules\Shared\Contracts\DashboardWidget;
 use Modules\Shared\Support\ModuleRegistry;
@@ -83,6 +83,9 @@ test('every named GET page renders for every default role', function () {
 
     expect($routes->count())->toBeGreaterThan(40);
 
+    // Match the asset version the middleware will compare against (depends on public/build manifest).
+    $version = (string) app(HandleInertiaRequests::class)->version(request());
+
     $failures = [];
     $forbidden = [];
 
@@ -99,7 +102,7 @@ test('every named GET page renders for every default role', function () {
             }
 
             $url = route($route->getName(), $parameters);
-            $response = $this->actingAs($user)->withHeaders(['X-Inertia' => 'true', 'X-Inertia-Version' => (string) Inertia::getVersion()])->get($url);
+            $response = $this->actingAs($user)->withHeaders(['X-Inertia' => 'true', 'X-Inertia-Version' => $version])->get($url);
             $status = $response->getStatusCode();
             $label = "{$role} GET {$route->getName()} ({$url})";
 
