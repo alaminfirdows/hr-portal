@@ -5,6 +5,7 @@ namespace Modules\Leave;
 use Illuminate\Console\Scheduling\Schedule;
 use Modules\Leave\Console\AccrueLeaveCommand;
 use Modules\Leave\Console\AllocateLeaveCommand;
+use Modules\Leave\Console\RemindApproversCommand;
 use Modules\Leave\Database\Seeders\LeaveDemoSeeder;
 use Modules\Leave\Services\EloquentLeaveCalendar;
 use Modules\Leave\Widgets\MyLeaveBalanceWidget;
@@ -63,12 +64,13 @@ class LeaveServiceProvider extends ModuleServiceProvider
             'leave.approval_needed' => 'A leave request needs your approval',
             'leave.request_approved' => 'Your leave request was approved',
             'leave.request_rejected' => 'Your leave request was rejected',
+            'leave.approval_reminder' => 'Leave requests are pending your approval for too long',
         ];
     }
 
     protected function consoleCommands(): array
     {
-        return [AllocateLeaveCommand::class, AccrueLeaveCommand::class];
+        return [AllocateLeaveCommand::class, AccrueLeaveCommand::class, RemindApproversCommand::class];
     }
 
     protected function contracts(): array
@@ -80,5 +82,6 @@ class LeaveServiceProvider extends ModuleServiceProvider
     {
         $schedule->command('leave:allocate')->yearlyOn(1, 1, '00:10');
         $schedule->command('leave:accrue')->monthlyOn(1, '00:20');
+        $schedule->command('leave:remind-approvers')->dailyAt('08:00');
     }
 }
