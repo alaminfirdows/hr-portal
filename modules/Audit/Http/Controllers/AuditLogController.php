@@ -9,6 +9,7 @@ use Inertia\Inertia;
 use Inertia\Response;
 use Modules\Audit\Models\AuditLog;
 use Modules\Identity\Models\User;
+use Modules\Shared\Support\Filters;
 
 final class AuditLogController extends Controller
 {
@@ -16,7 +17,7 @@ final class AuditLogController extends Controller
     {
         Gate::authorize('audit.view');
 
-        $filters = $request->only(['search', 'action', 'actor_id', 'from', 'to']);
+        $filters = Filters::only($request, ['search', 'action', 'actor_id', 'from', 'to']);
 
         return Inertia::render('audit/index', [
             'logs' => AuditLog::query()

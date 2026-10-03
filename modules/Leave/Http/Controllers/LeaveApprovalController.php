@@ -20,6 +20,7 @@ use Modules\Leave\Services\ApprovalFlow;
 use Modules\Organization\Models\Department;
 use Modules\Organization\Models\Team;
 use Modules\Shared\Contracts\OrgHierarchy;
+use Modules\Shared\Support\Filters;
 
 /**
  * Approver inbox. Lists requests inside the viewer's leave.approve scope (never their own);
@@ -39,7 +40,7 @@ final class LeaveApprovalController extends Controller
 
         $user = $this->user($request);
         $me = $this->org->employeeIdForUser($user->id);
-        $filters = $request->only(['status', 'department_id', 'team_id', 'leave_type_id', 'from', 'to']);
+        $filters = Filters::only($request, ['status', 'department_id', 'team_id', 'leave_type_id', 'from', 'to']);
         $status = $filters['status'] ?? LeaveStatus::Pending->value;
 
         $requests = LeaveRequest::query()

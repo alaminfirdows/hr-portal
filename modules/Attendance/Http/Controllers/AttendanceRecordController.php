@@ -17,6 +17,7 @@ use Modules\Attendance\Models\AttendanceRecord;
 use Modules\Employees\Models\Employee;
 use Modules\Identity\Models\User;
 use Modules\Organization\Models\Department;
+use Modules\Shared\Support\Filters;
 
 /**
  * Team / company attendance inside the viewer's attendance.view scope, with manual corrections.
@@ -30,7 +31,7 @@ final class AttendanceRecordController extends Controller
         Gate::authorize('attendance.view');
 
         $user = $this->user($request);
-        $filters = $request->only(['from', 'to', 'status', 'department_id', 'search']);
+        $filters = Filters::only($request, ['from', 'to', 'status', 'department_id', 'search']);
         $from = $this->date($filters['from'] ?? null) ?? now()->toDateString();
         $to = $this->date($filters['to'] ?? null) ?? $from;
         $ids = $this->access->visibleEmployeeIds($user, 'attendance.view');

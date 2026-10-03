@@ -12,6 +12,7 @@ use Modules\Employees\Models\Employee;
 use Modules\Organization\Models\Department;
 use Modules\Organization\Models\Location;
 use Modules\Organization\Models\Team;
+use Modules\Shared\Support\Filters;
 
 final class DirectoryController extends Controller
 {
@@ -19,7 +20,7 @@ final class DirectoryController extends Controller
     {
         Gate::authorize('directory.view');
 
-        $filters = $request->only(['search', 'department_id', 'team_id', 'location_id']);
+        $filters = Filters::only($request, ['search', 'department_id', 'team_id', 'location_id']);
 
         return Inertia::render('employees/directory/index', [
             'employees' => Employee::query()

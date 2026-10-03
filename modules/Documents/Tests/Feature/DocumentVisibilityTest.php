@@ -5,6 +5,7 @@ use Modules\Documents\Enums\DocumentVisibility;
 use Modules\Documents\Models\Document;
 use Modules\Documents\Models\DocumentShare;
 use Modules\Documents\Notifications\DocumentShared;
+use Modules\Employees\Models\Employee;
 use Modules\Identity\Models\User;
 use Modules\Organization\Models\Department;
 use Modules\Organization\Models\Team;
@@ -126,4 +127,55 @@ test('employee documents endpoint respects visibility', function () {
 
     $this->actingAs($viewer)->getJson(route('documents.employee', employeeOf($subject)))->assertOk()->assertJsonCount(0, 'documents');
     $this->actingAs($subject)->getJson(route('documents.employee', employeeOf($subject)))->assertOk()->assertJsonCount(1, 'documents');
+});
+
+test('documents.manage below all scope does not see or manage unrelated documents', function () {
+    $teamManager = userWithPermissions(['documents.view' => 'all', 'documents.upload' => 'own', 'documents.manage' => 'team']);
+    $stranger = Employee::factory()->create();
+    $hrPrivate = Document::factory()->visibility(DocumentVisibility::Private)->create(['employee_id' => $stranger->id, 'uploaded_by' => null]);
+
+    expect(visibleIds($teamManager))->not->toContain($hrPrivate->id);
+    $this->actingAs($teamManager)->get(route('documents.show', $hrPrivate))->assertForbidden();
+    $this->actingAs($teamManager)->put(route('documents.update', $hrPrivate), ['title' => 'x', 'visibility' => 'private'])->assertForbidden();
+    $this->actingAs($teamManager)->delete(route('documents.destroy', $hrPrivate))->assertForbidden();
+    $this->actingAs($teamManager)->post(route('documents.share', $hrPrivate), ['user_ids' => []])->assertForbidden();
+});
+
+test('documents.manage at team scope covers documents of employees in that team only', function () {
+    $teamManager = userWithPermissions(['documents.view' => 'all', 'documents.manage' => 'team']);
+    $mate = Employee::factory()->create(['manager_id' => employeeOf($teamManager)->id]);
+    forgetHierarchy();
+    $linked = Document::factory()->visibility(DocumentVisibility::Private)->create(['employee_id' => $mate->id, 'uploaded_by' => null]);
+
+    expect(visibleIds($teamManager))->toContain($linked->id);
+    $this->actingAs($teamManager)->delete(route('documents.destroy', $linked))->assertRedirect();
+});
+
+test('documents.manage at all scope still manages everything', function () {
+    $hr = userWithRole('hr');
+    $doc = Document::factory()->visibility(DocumentVisibility::Private)->create(['uploaded_by' => null]);
+
+    expect(visibleIds($hr))->toContain($doc->id);
+    $this->actingAs($hr)->delete(route('documents.destroy', $doc))->assertRedirect();
+});
+
+test('non manager edit keeps the employee link', function () {
+    $owner = userWithRole('employee');
+    $subject = Employee::factory()->create();
+    $doc = Document::factory()->visibility(DocumentVisibility::Private)->create(['uploaded_by' => $owner->id, 'employee_id' => $subject->id]);
+
+    $this->actingAs($owner)->put(route('documents.update', $doc), ['title' => 'Renamed', 'visibility' => 'private', 'url' => 'https://example.com'])->assertSessionHasNoErrors();
+
+    expect($doc->fresh()->title)->toBe('Renamed')->and($doc->fresh()->employee_id)->toBe($subject->id);
+});
+
+test('index ignores array filters and escapes like wildcards', function () {
+    $hr = userWithRole('hr');
+    Document::factory()->create(['title' => '100% done']);
+    Document::factory()->create(['title' => 'plain']);
+
+    $this->actingAs($hr)->get(route('documents.index', ['search' => ['a'], 'folder_id' => ['x'], 'category' => ['x'], 'tag' => ['x'], 'visibility' => ['x']]))->assertOk();
+
+    $this->actingAs($hr)->get(route('documents.index', ['search' => '%']))
+        ->assertInertia(fn ($page) => $page->has('documents.data', 1)->where('documents.data.0.title', '100% done'));
 });

@@ -50,6 +50,7 @@ final class WorkloadReport extends AbstractReport
         return $this->employees($user, $filters)
             ->join('project_members as pm', 'pm.employee_id', '=', 'employees.id')
             ->join('projects as p', fn ($j) => $j->on('p.id', '=', 'pm.project_id')->where('p.status', 'active'))
+            ->tap(fn ($q) => $this->openableProjects($q, $user, 'p'))
             ->selectRaw('employees.employee_code, employees.first_name, employees.last_name, employees.department_id, count(*) as project_count, sum(pm.allocation_percent) as allocation')
             ->groupBy('employees.id', 'employees.employee_code', 'employees.first_name', 'employees.last_name', 'employees.department_id')
             ->orderByDesc('allocation')

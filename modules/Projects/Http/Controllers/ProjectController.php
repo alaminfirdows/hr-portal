@@ -28,6 +28,7 @@ use Modules\Projects\Services\ProjectAccess;
 use Modules\Shared\Contracts\AuditTrail;
 use Modules\Shared\Contracts\OrgHierarchy;
 use Modules\Shared\Enums\Scope;
+use Modules\Shared\Support\Filters;
 
 final class ProjectController extends Controller
 {
@@ -43,7 +44,7 @@ final class ProjectController extends Controller
 
         /** @var User $user */
         $user = $request->user();
-        $filters = $request->only(['search', 'status', 'visibility', 'mine']);
+        $filters = Filters::only($request, ['search', 'status', 'visibility', 'mine']);
         $me = app(OrgHierarchy::class)->employeeIdForUser($user->id);
         $status = ProjectStatus::tryFrom((string) ($filters['status'] ?? ''));
         $visibility = ProjectVisibility::tryFrom((string) ($filters['visibility'] ?? ''));

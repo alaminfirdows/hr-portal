@@ -10,10 +10,10 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Modules\AccessControl\Services\Access;
 use Modules\Documents\Database\Factories\DocumentFactory;
 use Modules\Documents\Enums\DocumentKind;
 use Modules\Documents\Enums\DocumentVisibility;
+use Modules\Documents\Services\DocumentManagers;
 use Modules\Employees\Models\Employee;
 use Modules\Identity\Models\User;
 use Modules\Organization\Models\Department;
@@ -126,16 +126,18 @@ class Document extends Model
     }
 
     /**
-     * Documents the user may open. Managers (documents.manage) see everything; everyone else sees
+     * Documents the user may open. Managers (documents.manage at all scope) see everything; narrower scopes also see documents linked to employees in scope; everyone else sees
      * what they uploaded, what is addressed to them, and what was shared with them.
      *
      * @param  Builder<self>  $query
      */
     public function scopeVisibleTo(Builder $query, User $user): void
     {
-        if (app(Access::class)->scope($user, 'documents.manage') !== null) {
+        if (DocumentManagers::managesAll($user)) {
             return;
         }
+
+        $managedEmployeeIds = DocumentManagers::employeeIds($user) ?? [];
 
         $org = app(OrgHierarchy::class);
         $employeeId = $org->employeeIdForUser($user->id);
@@ -143,10 +145,14 @@ class Document extends Model
         $teamId = $employeeId === null ? null : $org->teamId($employeeId);
         $projectIds = $employeeId === null ? [] : app(ProjectMembership::class)->projectIdsFor($employeeId);
 
-        $query->where(function (Builder $q) use ($user, $employeeId, $departmentId, $teamId, $projectIds) {
+        $query->where(function (Builder $q) use ($user, $employeeId, $departmentId, $teamId, $projectIds, $managedEmployeeIds) {
             $q->where('uploaded_by', $user->id)
                 ->orWhere('visibility', DocumentVisibility::Organization->value)
                 ->orWhereIn('id', DocumentShare::query()->where('user_id', $user->id)->select('document_id'));
+
+            if ($managedEmployeeIds !== []) {
+                $q->orWhereIn('employee_id', $managedEmployeeIds);
+            }
 
             if ($employeeId !== null) {
                 $q->orWhere('employee_id', $employeeId);

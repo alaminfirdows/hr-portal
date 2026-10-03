@@ -32,7 +32,7 @@ final class ReportController
         $user = $this->user($request);
 
         $groups = collect($this->registry->all())
-            ->filter(fn (Report $r) => Gate::forUser($user)->allows($r->permission()))
+            ->filter(fn (Report $r) => $r->accessibleBy($user))
             ->groupBy(fn (Report $r) => $r->group())
             ->map(fn ($reports, string $group) => [
                 'group' => $group,
@@ -89,7 +89,8 @@ final class ReportController
 
         $report = $this->registry->find($key) ?? abort(404);
 
-        Gate::authorize($report->permission());
+        $user = request()->user();
+        abort_unless($user instanceof User && $report->accessibleBy($user), 403);
 
         return $report;
     }

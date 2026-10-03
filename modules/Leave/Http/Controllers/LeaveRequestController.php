@@ -21,6 +21,7 @@ use Modules\Leave\Models\LeaveRequest;
 use Modules\Leave\Models\LeaveType;
 use Modules\Leave\Services\ApprovalFlow;
 use Modules\Leave\Services\LeaveBalanceService;
+use Modules\Shared\Support\Filters;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
@@ -52,7 +53,7 @@ final class LeaveRequestController extends Controller
                 ->paginate(15)
                 ->withQueryString()
                 ->through(fn (LeaveRequest $r) => LeavePresenter::request($r)),
-            'filters' => $request->only(['status']),
+            'filters' => Filters::only($request, ['status']),
             'options' => [
                 'statuses' => LeaveStatus::options(),
                 'day_parts' => DayPart::options(),

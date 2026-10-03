@@ -3,8 +3,10 @@
 namespace Modules\Reports\Reports\Payroll;
 
 use Illuminate\Database\Query\Builder;
+use Modules\AccessControl\Services\Access;
 use Modules\Identity\Models\User;
 use Modules\Reports\Reports\AbstractReport;
+use Modules\Shared\Enums\Scope;
 
 final class SalaryDistributionReport extends AbstractReport
 {
@@ -31,6 +33,14 @@ final class SalaryDistributionReport extends AbstractReport
     public function permission(): string
     {
         return 'payroll.manage';
+    }
+
+    /**
+     * Rows are limited by the reports.view scope, so payroll data needs payroll.manage across the company.
+     */
+    public function accessibleBy(User $user): bool
+    {
+        return parent::accessibleBy($user) && app(Access::class)->scope($user, 'payroll.manage') === Scope::All;
     }
 
     public function filters(): array

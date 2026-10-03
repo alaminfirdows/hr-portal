@@ -22,7 +22,9 @@ final class ProjectMemberRequest extends FormRequest
 
         $employeeId = $member instanceof ProjectMember ? $member->employee_id : $this->integer('employee_id');
 
-        return Gate::allows('manageMembers', [$project, $employeeId]);
+        return Gate::allows('projects.view')
+            && Gate::allows('view', $project)
+            && Gate::allows('manageMembers', [$project, $employeeId]);
     }
 
     /**

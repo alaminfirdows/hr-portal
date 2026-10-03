@@ -4,9 +4,13 @@ namespace Modules\Reports\Reports;
 
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Modules\AccessControl\Services\Access;
 use Modules\Identity\Models\User;
+use Modules\Projects\Enums\ProjectVisibility;
 use Modules\Reports\Contracts\Report;
+use Modules\Shared\Contracts\OrgHierarchy;
+use Modules\Shared\Enums\Scope;
 use Modules\Shared\ValueObjects\Money;
 
 abstract class AbstractReport implements Report
@@ -14,6 +18,11 @@ abstract class AbstractReport implements Report
     public function permission(): string
     {
         return 'reports.view';
+    }
+
+    public function accessibleBy(User $user): bool
+    {
+        return Gate::forUser($user)->allows('reports.view') && Gate::forUser($user)->allows($this->permission());
     }
 
     public function chart(): ?array
@@ -35,6 +44,25 @@ abstract class AbstractReport implements Report
             ->whereNull('employees.deleted_at')
             ->when($ids !== null, fn (Builder $q) => $q->whereIn('employees.id', $ids))
             ->when($filters['department_id'] !== null, fn (Builder $q) => $q->where('employees.department_id', $filters['department_id']));
+    }
+
+    /**
+     * Limits a projects query to what ProjectAccess::canOpen allows: everything for projects.manage at
+     * Scope::All, otherwise public projects and projects the viewer manages or belongs to.
+     */
+    protected function openableProjects(Builder $query, User $user, string $projects): void
+    {
+        if (app(Access::class)->scope($user, 'projects.manage') === Scope::All) {
+            return;
+        }
+
+        $me = app(OrgHierarchy::class)->employeeIdForUser($user->id);
+
+        $query->where(fn (Builder $v) => $v
+            ->where("{$projects}.visibility", ProjectVisibility::Public->value)
+            ->when($me !== null, fn (Builder $v) => $v
+                ->orWhere("{$projects}.manager_employee_id", $me)
+                ->orWhereIn("{$projects}.id", DB::table('project_members')->where('employee_id', $me)->select('project_id'))));
     }
 
     /**

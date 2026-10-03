@@ -200,3 +200,23 @@ test('employee page exposes the documents tab only with documents.view', functio
     $this->actingAs($withDocs)->get(route('employees.show', $target))->assertInertia(fn ($page) => $page->where('can.documents', true));
     $this->actingAs($without)->get(route('employees.show', $target))->assertInertia(fn ($page) => $page->where('can.documents', false));
 });
+
+test('terminated employee photo is hidden from directory viewers without employees.view', function () {
+    Storage::fake();
+    $e = Employee::factory()->create(['photo_path' => 'photos/x.jpg', 'status' => EmployeeStatus::Terminated]);
+    Storage::put('photos/x.jpg', 'img');
+    $viewer = userWithRole('employee');
+
+    $this->actingAs($viewer)->get(route('employees.photo', $e))->assertNotFound();
+    $this->actingAs(userWithRole('hr'))->get(route('employees.photo', $e))->assertOk();
+
+    $e->update(['status' => EmployeeStatus::Active]);
+    $this->actingAs($viewer)->get(route('employees.photo', $e))->assertOk();
+});
+
+test('list pages ignore array filters', function () {
+    $hr = userWithRole('hr');
+
+    $this->actingAs($hr)->get(route('employees.index', ['search' => ['a'], 'status' => ['b'], 'department_id' => ['c']]))->assertOk();
+    $this->actingAs($hr)->get(route('employees.directory', ['search' => ['a'], 'team_id' => ['c']]))->assertOk();
+});
