@@ -24,6 +24,7 @@ use Modules\Employees\Models\Employee;
 use Modules\Identity\Models\User;
 use Modules\Organization\Models\Department;
 use Modules\Organization\Models\Team;
+use Modules\Shared\Contracts\ProjectMembership;
 
 final class DocumentController extends Controller
 {
@@ -158,7 +159,11 @@ final class DocumentController extends Controller
      */
     private function formOptions(): array
     {
+        /** @var User $user */
+        $user = request()->user();
+
         return [
+            'projects' => app(ProjectMembership::class)->optionsFor($user),
             'departments' => Department::query()->orderBy('name')->get(['id', 'name'])->map(fn (Department $d) => ['value' => $d->id, 'label' => $d->name])->all(),
             'teams' => Team::query()->orderBy('name')->get(['id', 'name'])->map(fn (Team $t) => ['value' => $t->id, 'label' => $t->name])->all(),
             'users' => Employee::query()->employed()->whereNotNull('user_id')->orderBy('first_name')->get(['user_id', 'first_name', 'last_name'])

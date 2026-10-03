@@ -8,6 +8,7 @@ use Modules\Documents\Enums\DocumentKind;
 use Modules\Documents\Enums\DocumentVisibility;
 use Modules\Documents\Models\Document;
 use Modules\Documents\Notifications\DocumentExpiring;
+use Modules\Identity\Models\User;
 use Modules\Organization\Models\Department;
 use Modules\Shared\Contracts\ProjectMembership;
 
@@ -133,7 +134,15 @@ test('project visibility requires membership', function () {
         {
             return [5];
         }
+
+        public function optionsFor(User $user): array
+        {
+            return [['value' => 5, 'label' => 'Apollo']];
+        }
     });
+
+    $this->actingAs($user)->get(route('documents.index'))
+        ->assertInertia(fn ($page) => $page->where('options.projects', [['value' => 5, 'label' => 'Apollo']]));
 
     $this->actingAs($user)->post(route('documents.links.store'), [
         'url' => 'https://example.com', 'title' => 'P', 'visibility' => 'project', 'target_project_id' => 9,

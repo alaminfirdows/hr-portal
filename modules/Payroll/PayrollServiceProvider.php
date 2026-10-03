@@ -17,7 +17,7 @@ class PayrollServiceProvider extends ModuleServiceProvider
 
     public function seedOrder(): int
     {
-        return 60;
+        return 80;
     }
 
     public function permissions(): array

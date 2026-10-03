@@ -19,7 +19,7 @@ class DocumentsServiceProvider extends ModuleServiceProvider
 
     public function seedOrder(): int
     {
-        return 60;
+        return 70;
     }
 
     public function permissions(): array

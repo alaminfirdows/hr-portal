@@ -5,6 +5,7 @@ use Modules\Identity\Models\User;
 use Modules\Projects\Actions\SyncProjectManager;
 use Modules\Projects\Enums\MemberRole;
 use Modules\Projects\Enums\ProjectStatus;
+use Modules\Projects\Enums\ProjectVisibility;
 use Modules\Projects\Models\Project;
 use Modules\Projects\Models\ProjectMember;
 use Modules\Projects\Notifications\AddedToProject;
@@ -200,4 +201,16 @@ test('my projects widget lists my open projects', function () {
 test('active projects widget is hidden for plain employees', function () {
     expect(app(ActiveProjectsWidget::class)->visible(userWithRole('employee')))->toBeFalse()
         ->and(app(ActiveProjectsWidget::class)->visible(userWithRole('hr')))->toBeTrue();
+});
+
+test('membership contract lists project options visible to the user', function () {
+    $user = userWithRole('employee');
+    $public = Project::factory()->create(['name' => 'Alpha']);
+    $private = Project::factory()->visibility(ProjectVisibility::Private)->create(['name' => 'Hidden']);
+    $mine = Project::factory()->visibility(ProjectVisibility::Private)->create(['name' => 'Mine', 'manager_employee_id' => employeeOf($user)->id]);
+
+    $options = app(ProjectMembership::class)->optionsFor($user);
+
+    expect($options)->toBe([['value' => $public->id, 'label' => 'Alpha'], ['value' => $mine->id, 'label' => 'Mine']])
+        ->and(collect($options)->pluck('value'))->not->toContain($private->id);
 });

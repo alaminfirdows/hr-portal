@@ -10,6 +10,7 @@ export type DocumentOptions = {
     visibilities: Option<string>[];
     departments: Option<number>[];
     teams: Option<number>[];
+    projects: Option<number>[];
     users: Option<number>[];
     employees: Option<number>[];
 };
@@ -200,18 +201,17 @@ export function DocumentFields({
             )}
             {visibility === 'project' && (
                 <FormField
-                    label="Project ID"
+                    label="Project"
                     htmlFor="target_project_id"
                     error={errors.target_project_id}
                     required
                 >
-                    <Input
+                    <OptionSelect
                         id="target_project_id"
                         name="target_project_id"
-                        type="number"
-                        min={1}
-                        defaultValue={defaults.project_id ?? ''}
-                        required
+                        value={defaults.project_id ?? null}
+                        options={options.projects}
+                        placeholder="Select a project…"
                     />
                 </FormField>
             )}
