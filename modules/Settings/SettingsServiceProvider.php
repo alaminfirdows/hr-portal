@@ -38,6 +38,24 @@ class SettingsServiceProvider extends ModuleServiceProvider
         return [SettingsSeeder::class];
     }
 
+    public function boot(): void
+    {
+        parent::boot();
+
+        $this->app->booted(fn () => $this->applyOrganizationSettings());
+    }
+
+    /**
+     * Company timezone drives "today" (attendance, leave, schedules); company name drives page titles and mail.
+     */
+    public function applyOrganizationSettings(): void
+    {
+        $settings = $this->app->make(SettingsRepository::class)->organization();
+
+        config(['app.timezone' => $settings->timezone, 'app.name' => $settings->companyName]);
+        date_default_timezone_set($settings->timezone);
+    }
+
     protected function contracts(): array
     {
         return [SettingsRepository::class => SettingsRepository::class];

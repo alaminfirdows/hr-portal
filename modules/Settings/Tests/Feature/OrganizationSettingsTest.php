@@ -1,6 +1,7 @@
 <?php
 
 use Modules\Settings\Services\SettingsRepository;
+use Modules\Settings\SettingsServiceProvider;
 
 test('hr can update organization settings', function () {
     $this->actingAs(userWithRole('hr'))->put(route('settings.organization.update'), [
@@ -26,4 +27,17 @@ test('invalid timezone rejected', function () {
         'company_name' => 'Acme', 'timezone' => 'Mars/Base', 'currency' => 'USD',
         'fiscal_year_start_month' => 1, 'leave_year_start_month' => 1, 'working_days' => [1], 'date_format' => 'Y-m-d',
     ])->assertSessionHasErrors('timezone');
+});
+
+test('company timezone and name are applied to the app', function () {
+    app(SettingsRepository::class)->setMany(['timezone' => 'Asia/Dhaka', 'company_name' => 'Acme']);
+
+    app()->getProvider(SettingsServiceProvider::class)?->applyOrganizationSettings();
+
+    expect(config('app.timezone'))->toBe('Asia/Dhaka')
+        ->and(now()->getTimezone()->getName())->toBe('Asia/Dhaka')
+        ->and(config('app.name'))->toBe('Acme');
+
+    date_default_timezone_set('UTC');
+    config(['app.timezone' => 'UTC']);
 });
