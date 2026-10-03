@@ -2,6 +2,7 @@
 
 namespace Modules\Leave\Actions;
 
+use Illuminate\Support\Facades\DB;
 use Modules\Employees\Models\Employee;
 use Modules\Identity\Models\User;
 use Modules\Leave\Events\LeaveBalanceAdjusted;
@@ -23,11 +24,17 @@ final class AdjustBalance
             throw new DomainException(__('The adjustment cannot be zero.'), 'delta');
         }
 
-        $balance = $this->balances->balance($employee, $type, $year);
-        $before = $balance->adjustment;
+        [$balance, $before] = DB::transaction(function () use ($employee, $type, $year, $delta): array {
+            $row = $this->balances->balance($employee, $type, $year);
+            $locked = LeaveBalance::query()->lockForUpdate()->findOrFail($row->id);
+            $before = $locked->adjustment;
 
-        $balance->adjustment = round($before + $delta, 2);
-        $balance->save();
+            $locked->adjustment = round($before + $delta, 2);
+            $locked->save();
+
+            return [$locked, $before];
+        });
+
         $balance->setRelation('type', $type);
         $balance->setRelation('employee', $employee);
 

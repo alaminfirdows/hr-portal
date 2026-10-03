@@ -1,8 +1,10 @@
 <?php
 
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
+use Modules\Employees\Actions\UpdateEmployeePhoto;
 use Modules\Employees\Enums\EmployeeStatus;
 use Modules\Employees\Models\Employee;
 use Modules\Employees\Models\EmployeeHistory;
@@ -219,4 +221,34 @@ test('list pages ignore array filters', function () {
 
     $this->actingAs($hr)->get(route('employees.index', ['search' => ['a'], 'status' => ['b'], 'department_id' => ['c']]))->assertOk();
     $this->actingAs($hr)->get(route('employees.directory', ['search' => ['a'], 'team_id' => ['c']]))->assertOk();
+});
+
+test('replacing a photo keeps the new file and removes the old one', function () {
+    Storage::fake(config('filesystems.default'));
+    $e = Employee::factory()->create();
+    $action = app(UpdateEmployeePhoto::class);
+
+    $action->handle($e, UploadedFile::fake()->image('a.jpg', 200, 200));
+    $old = $e->fresh()->photo_path;
+    $action->handle($e->fresh(), UploadedFile::fake()->image('b.jpg', 200, 200));
+    $new = $e->fresh()->photo_path;
+
+    expect($new)->not->toBe($old);
+    Storage::disk(config('filesystems.default'))->assertExists($new);
+    Storage::disk(config('filesystems.default'))->assertMissing($old);
+});
+
+test('a failed photo save keeps the old file and removes the new upload', function () {
+    Storage::fake(config('filesystems.default'));
+    $e = Employee::factory()->create();
+    $action = app(UpdateEmployeePhoto::class);
+
+    $action->handle($e, UploadedFile::fake()->image('a.jpg', 200, 200));
+    $old = $e->fresh()->photo_path;
+
+    Event::listen('eloquent.updating: '.Employee::class, fn () => throw new RuntimeException('boom'));
+
+    expect(fn () => $action->handle($e->fresh(), UploadedFile::fake()->image('b.jpg', 200, 200)))->toThrow(RuntimeException::class);
+
+    expect(Storage::disk(config('filesystems.default'))->allFiles())->toBe([$old]);
 });

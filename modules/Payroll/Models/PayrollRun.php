@@ -49,6 +49,16 @@ class PayrollRun extends Model
         ];
     }
 
+    /**
+     * Reloads this instance from a row locked for update. Call inside a transaction, then re-check the state.
+     */
+    public function lockAndRefresh(): static
+    {
+        $this->setRawAttributes(static::query()->lockForUpdate()->findOrFail($this->id)->getAttributes(), true);
+
+        return $this;
+    }
+
     public function periodStart(): CarbonImmutable
     {
         return CarbonImmutable::createFromFormat('!Y-m-d', $this->period.'-01') ?? CarbonImmutable::now()->startOfMonth();

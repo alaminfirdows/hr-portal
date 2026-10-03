@@ -33,22 +33,27 @@ final class LeaveBalanceController extends Controller
         $user = $request->user();
         abort_unless($user instanceof User, 403);
 
-        $year = $request->integer('year') ?: (int) now()->year;
+        $current = (int) now()->year;
+        $request->validate(['year' => ['nullable', 'integer', 'between:'.($current - 1).','.($current + 1)]]);
+
+        $year = $request->integer('year') ?: $current;
         $search = $request->string('search')->toString();
 
-        $employees = Employee::query()
+        $page = Employee::query()
             ->employed()
             ->withinIds($this->access->visibleEmployeeIds($user, 'leave.manage'))
             ->search($search)
             ->orderBy('first_name')
             ->orderBy('last_name')
             ->paginate(15)
-            ->withQueryString()
-            ->through(fn (Employee $e) => [
-                'id' => $e->id,
-                'full_name' => $e->full_name,
-                'balances' => $this->balances->forEmployee($e->id, $year),
-            ]);
+            ->withQueryString();
+
+        $balances = $this->balances->forEmployees($page->getCollection(), $year);
+        $employees = $page->through(fn (Employee $e) => [
+            'id' => $e->id,
+            'full_name' => $e->full_name,
+            'balances' => $balances[$e->id] ?? [],
+        ]);
 
         return Inertia::render('leave/balances/index', [
             'employees' => $employees,

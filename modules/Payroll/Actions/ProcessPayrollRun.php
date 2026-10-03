@@ -18,11 +18,13 @@ final class ProcessPayrollRun
 {
     public function handle(PayrollRun $run, ?User $by = null): PayrollRun
     {
-        if (! $run->status->canTransitionTo(PayrollRunStatus::Processed)) {
-            throw InvalidStateTransition::from('payroll run', $run->status->value, PayrollRunStatus::Processed->value);
-        }
-
         DB::transaction(function () use ($run): void {
+            $run->lockAndRefresh();
+
+            if (! $run->status->canTransitionTo(PayrollRunStatus::Processed)) {
+                throw InvalidStateTransition::from('payroll run', $run->status->value, PayrollRunStatus::Processed->value);
+            }
+
             $now = now();
             Payslip::query()->where('payroll_run_id', $run->id)->update(['published_at' => $now]);
             $run->update(['status' => PayrollRunStatus::Processed, 'processed_at' => $now]);

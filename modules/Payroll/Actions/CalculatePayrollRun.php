@@ -31,7 +31,7 @@ final class CalculatePayrollRun
     public function handle(PayrollRun $run, ?User $by = null): PayrollRun
     {
         DB::transaction(function () use ($run): void {
-            $run->refresh();
+            $run->lockAndRefresh();
 
             if (! $run->status->canTransitionTo(PayrollRunStatus::Calculated)) {
                 throw InvalidStateTransition::from('payroll run', $run->status->value, PayrollRunStatus::Calculated->value);
