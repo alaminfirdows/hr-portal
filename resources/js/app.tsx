@@ -1,4 +1,4 @@
-import { createInertiaApp } from '@inertiajs/react';
+import { createInertiaApp, router } from '@inertiajs/react';
 import type { ComponentType } from 'react';
 import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
@@ -7,7 +7,16 @@ import AppLayout from '@/layouts/app-layout';
 import AuthLayout from '@/layouts/auth-layout';
 import SettingsLayout from '@/layouts/settings/layout';
 
-const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
+// Company name comes from organization settings via the shared `name` prop.
+let appName = import.meta.env.VITE_APP_NAME || 'Laravel';
+
+router.on('navigate', (event) => {
+    const name = event.detail.page.props.name;
+
+    if (typeof name === 'string' && name !== '') {
+        appName = name;
+    }
+});
 
 type PageModule = { default: ComponentType };
 
