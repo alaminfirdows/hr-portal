@@ -25,10 +25,12 @@
 ---
 
 ### Task 1: Report framework
+
 - `Contracts/Report`, `ReportRegistry`, `ReportController@index|show|export`, pages `reports/index.tsx` (catalog grouped), `reports/show.tsx` (filters, table, optional bar chart).
 - Tests: registry, auth, CSV escaping, 404.
 
 ### Task 2: Reports
+
 - HR: headcount by department, joiners/leavers in period, turnover rate.
 - Attendance: summary per employee (present/late/absent/overtime) for period; late list.
 - Leave: usage per type per department; balances.
@@ -37,4 +39,5 @@
 - Tests per report: correct aggregates on factory data; scope filter.
 
 ### Task 3: Automation polish
+
 - Schedule audit: verify all scheduled commands registered (`schedule:list` test). Upcoming birthdays widget, leave reminder to approvers with pending > 2 days (`leave:remind-approvers` daily).

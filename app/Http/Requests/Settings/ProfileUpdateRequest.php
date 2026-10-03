@@ -17,6 +17,7 @@ class ProfileUpdateRequest extends FormRequest
      */
     public function rules(): array
     {
-        return $this->profileRules($this->user()->id);
+        // The official email is managed by HR (Employees module); users change only their display name.
+        return ['name' => $this->nameRules()];
     }
 }

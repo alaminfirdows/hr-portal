@@ -25,17 +25,21 @@
 ---
 
 ### Task 1: Projects CRUD + visibility
+
 - Migrations projects, project_members; enums `ProjectStatus`, `ProjectVisibility`, `ProjectPriority`, `MemberRole`; `Models\Project::scopeVisibleTo(User)`; policy; Actions `CreateProject`, `UpdateProject`, `ArchiveProject`; events Auditable.
 - Pages `projects/index.tsx` (cards/table, filters status/visibility/mine), `projects/show.tsx` (tabs Overview, Members, Fields, Activity), `projects/create.tsx`, `projects/edit.tsx`.
 - Tests: visibility matrix; PM own scope manage; employee cannot create.
 
 ### Task 2: Members
+
 - Actions `AddProjectMember`, `UpdateProjectMember`, `RemoveProjectMember`; notifications `AddedToProject`; allocation warning.
 - Tests: add/remove auth; duplicate member rejected; manager removal blocked; notification sent; "My projects".
 
 ### Task 3: Custom fields
+
 - Migrations definitions + values; page `projects/fields/index.tsx`; dynamic inputs on project form; validation by type.
 - Tests: types validation; required; select options enforced.
 
 ### Task 4: Activity, widgets, demo
+
 - Activity tab from AuditTrail. Widgets: My projects (employee), Active projects count (HR/admin/PM). Demo: 8 projects, mixed visibility, members, field definitions (Client, Project Type, Technology).

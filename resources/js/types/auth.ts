@@ -1,3 +1,5 @@
+import type { Scope } from '@/types/portal';
+
 export type User = {
     id: number;
     name: string;
@@ -12,6 +14,10 @@ export type User = {
 
 export type Auth = {
     user: User;
+    employee_id: number | null;
+    is_super: boolean;
+    /** permission key => widest scope */
+    permissions: Record<string, Scope>;
 };
 
 export type Passkey = {

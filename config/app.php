@@ -28,6 +28,9 @@ return [
 
     'env' => env('APP_ENV', 'production'),
 
+    // Run DemoSeeder from `db:seed`. Defaults on in local.
+    'seed_demo' => (bool) env('SEED_DEMO', env('APP_ENV', 'production') === 'local'),
+
     /*
     |--------------------------------------------------------------------------
     | Application Debug Mode

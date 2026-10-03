@@ -2,24 +2,21 @@
 
 namespace Database\Seeders;
 
-use App\Models\User;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use Modules\Shared\Support\ModuleRegistry;
 
+/**
+ * Runs every module's base seeders (roles, settings). Demo data: `php artisan db:seed --class=DemoSeeder`
+ * or set SEED_DEMO=true.
+ */
 class DatabaseSeeder extends Seeder
 {
-    use WithoutModelEvents;
-
-    /**
-     * Seed the application's database.
-     */
-    public function run(): void
+    public function run(ModuleRegistry $registry): void
     {
-        // User::factory(10)->create();
+        $this->call($registry->seeders());
 
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
-        ]);
+        if (config('app.seed_demo')) {
+            $this->call(DemoSeeder::class);
+        }
     }
 }

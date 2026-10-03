@@ -1,5 +1,7 @@
 @import 'tailwindcss';
 
+@source '../../modules';
+
 @import 'tw-animate-css';
 
 @source '../views';

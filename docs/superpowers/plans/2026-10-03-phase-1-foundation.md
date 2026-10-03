@@ -31,6 +31,7 @@
 ### Task 1: Module loader + Shared kernel
 
 **Files:**
+
 - Modify: `composer.json` (psr-4 `"Modules\\": "modules/"`), `bootstrap/providers.php`, `phpunit.xml` (suite `modules/*/Tests`), `tests/Pest.php`, `phpstan.neon` (path `modules/`), `config/inertia.php`
 - Create: `app/Providers/ModuleServiceProvider.php`, `modules/Shared/SharedServiceProvider.php`, `modules/Shared/Support/{ModuleServiceProvider,ModuleRegistry,ModuleManifest,NavItem}.php`, `modules/Shared/Contracts/*.php`, `modules/Shared/Null/*.php`, `modules/Shared/Exceptions/DomainException.php`, `modules/Shared/ValueObjects/Money.php`, `modules/Shared/Data/AuditEntry.php`, `modules/Shared/Enums/Scope.php`
 - Test: `modules/Shared/Tests/Unit/MoneyTest.php`, `modules/Shared/Tests/Feature/ModuleRegistryTest.php`

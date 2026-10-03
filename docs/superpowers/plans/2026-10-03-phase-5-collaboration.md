@@ -25,14 +25,17 @@
 ---
 
 ### Task 1: Documents
+
 - Migrations folders, documents, document_shares; enums `DocumentKind`, `DocumentVisibility`; `Models\Document::scopeVisibleTo(User)`; policy; Actions `UploadDocument`, `CreateLinkDocument`, `UpdateDocument`, `DeleteDocument`, `ShareDocument`, `CreateFolder`; download controller (stream or temporary URL); command `documents:notify-expiring` (30/7 days); notifications `DocumentShared`, `DocumentExpiring`.
 - Pages `documents/index.tsx` (folder tree + table + filters category/tag/visibility, upload dialog), `documents/show.tsx`. Employee documents tab data endpoint (documents with employee_id) used by `employees/show` via its own section listing link.
 - Tests: visibility matrix (private/department/team/project/organization/users); share; download auth; validation; expiring notifications once.
 
 ### Task 2: Announcements
+
 - Migrations announcements, announcement_targets, announcement_reads; enums `Audience`, `Priority`; `scopeVisibleTo(User)`, `scopePublished()`; Actions `CreateAnnouncement`, `UpdateAnnouncement`, `DeleteAnnouncement`, `MarkAnnouncementRead`; command `announcements:dispatch` (every minute) → `AnnouncementPublished` notification to audience.
 - Pages `announcements/index.tsx` (feed for everyone with unread badges), `announcements/show.tsx` (marks read), `announcements/manage.tsx` (HR CRUD with audience picker).
 - Tests: audience targeting; scheduled; expiry; read tracking; dispatch once.
 
 ### Task 3: Widgets + demo
+
 - Widgets: recent announcements (everyone), recent documents (employee), expiring documents (HR). Demo: folders HR/Company/Projects, 20 documents, 6 announcements.

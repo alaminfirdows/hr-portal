@@ -5,26 +5,26 @@ Context doc (data model, rules, conventions): `docs/PROJECT_CONTEXT.md` — this
 
 ## 1. Decisions (from clarification)
 
-| Topic | Decision |
-|---|---|
-| Scope | Master context + all 6 phase plans; implement all phases |
-| Frontend | Inertia 3 + React + TS + shadcn (existing starter kit) |
-| Modularity | Custom app-level modules in `modules/<Name>`, no package |
-| Tenancy | Single company |
-| DB / infra | MySQL 8 + Redis in prod; SQLite for tests/local |
-| Auth | Fortify (existing) + custom RBAC tables with scopes |
-| Onboarding | Invite-only, any email domain |
-| Identity | Separate `users` (login) and `employees` (HR record), `employees.user_id` nullable unique |
-| Leave approval | Configurable steps per leave type (`manager`, `hr`) |
-| Leave accrual | yearly, monthly, carry-forward cap, pro-rata — per leave type |
-| Attendance | Web check-in/out + nightly finalize + HR edits |
-| Payroll | Rule-based components (fixed / % of basic / formula / tax slab), single currency, minor units |
-| Projects | Members + roles + allocation, custom fields, visibility. No tasks |
-| Permission scope | Scope on role-permission pivot: own/team/department/all |
-| Storage | Private disk, S3-compatible in prod, policy-checked downloads |
-| Realtime | Inertia polling (60 s) |
-| Audit | Custom module, event-driven |
-| Quality | Pest per action/policy/endpoint, Larastan, Pint, TS strict, demo seeders |
+| Topic            | Decision                                                                                      |
+| ---------------- | --------------------------------------------------------------------------------------------- |
+| Scope            | Master context + all 6 phase plans; implement all phases                                      |
+| Frontend         | Inertia 3 + React + TS + shadcn (existing starter kit)                                        |
+| Modularity       | Custom app-level modules in `modules/<Name>`, no package                                      |
+| Tenancy          | Single company                                                                                |
+| DB / infra       | MySQL 8 + Redis in prod; SQLite for tests/local                                               |
+| Auth             | Fortify (existing) + custom RBAC tables with scopes                                           |
+| Onboarding       | Invite-only, any email domain                                                                 |
+| Identity         | Separate `users` (login) and `employees` (HR record), `employees.user_id` nullable unique     |
+| Leave approval   | Configurable steps per leave type (`manager`, `hr`)                                           |
+| Leave accrual    | yearly, monthly, carry-forward cap, pro-rata — per leave type                                 |
+| Attendance       | Web check-in/out + nightly finalize + HR edits                                                |
+| Payroll          | Rule-based components (fixed / % of basic / formula / tax slab), single currency, minor units |
+| Projects         | Members + roles + allocation, custom fields, visibility. No tasks                             |
+| Permission scope | Scope on role-permission pivot: own/team/department/all                                       |
+| Storage          | Private disk, S3-compatible in prod, policy-checked downloads                                 |
+| Realtime         | Inertia polling (60 s)                                                                        |
+| Audit            | Custom module, event-driven                                                                   |
+| Quality          | Pest per action/policy/endpoint, Larastan, Pint, TS strict, demo seeders                      |
 
 ## 2. Approaches considered
 
@@ -93,16 +93,16 @@ Shared binds null implementations (`NullLeaveCalendar`, `NullAttendanceSummary`,
 
 ## 5. Error handling
 
-| Case | Behavior |
-|---|---|
-| Validation error | FormRequest → 422 → Inertia shows field errors |
-| Business rule violation in Action (e.g. insufficient balance) | throw `Modules\Shared\Exceptions\DomainException` → rendered as validation error on `domain` key + toast; never 500 |
-| Unauthorized | Policy → 403 page (Inertia error page) |
-| Invalid state transition (approve rejected request, process unapproved payroll) | `InvalidStateTransition` (DomainException) |
-| Disabled user mid-session | `EnsureUserIsActive` middleware logs out → login with message |
-| Missing file on download | 404 |
-| Formula error in payroll component | calculation stops for run, error names component + employee; run stays `draft` |
-| Scheduled job partial failure | per-employee try/catch, logged, continue others |
+| Case                                                                            | Behavior                                                                                                            |
+| ------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| Validation error                                                                | FormRequest → 422 → Inertia shows field errors                                                                      |
+| Business rule violation in Action (e.g. insufficient balance)                   | throw `Modules\Shared\Exceptions\DomainException` → rendered as validation error on `domain` key + toast; never 500 |
+| Unauthorized                                                                    | Policy → 403 page (Inertia error page)                                                                              |
+| Invalid state transition (approve rejected request, process unapproved payroll) | `InvalidStateTransition` (DomainException)                                                                          |
+| Disabled user mid-session                                                       | `EnsureUserIsActive` middleware logs out → login with message                                                       |
+| Missing file on download                                                        | 404                                                                                                                 |
+| Formula error in payroll component                                              | calculation stops for run, error names component + employee; run stays `draft`                                      |
+| Scheduled job partial failure                                                   | per-employee try/catch, logged, continue others                                                                     |
 
 ## 6. Testing strategy
 
