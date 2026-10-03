@@ -19,6 +19,22 @@ final class SetUserActive
             return $user;
         }
 
+        if (! $active && $user->isSuper()) {
+            if ($by !== null && ! $by->isSuper()) {
+                throw new DomainException(__('Only a super administrator can deactivate a super administrator.'));
+            }
+
+            $otherActiveSuper = User::query()
+                ->where('is_active', true)
+                ->whereKeyNot($user->id)
+                ->whereHas('roles', fn ($q) => $q->where('is_super', true))
+                ->exists();
+
+            if (! $otherActiveSuper) {
+                throw new DomainException(__('You cannot deactivate the last active super administrator.'));
+            }
+        }
+
         $user->forceFill(['is_active' => $active])->save();
 
         if (! $active) {
