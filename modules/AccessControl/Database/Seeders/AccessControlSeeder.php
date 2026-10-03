@@ -53,6 +53,7 @@ class AccessControlSeeder extends Seeder
                     'shifts.manage' => 'all',
                     'payroll.*' => 'all',
                     'documents.*' => 'all',
+                    'projects.*' => 'all',
                     'announcements.*' => 'all',
                     'reports.view' => 'all',
                     'audit.view' => 'all',
