@@ -30,6 +30,8 @@ use Modules\Leave\Enums\LeaveStatus;
  * @property list<string> $steps Approval steps resolved at submission
  * @property int $current_step
  * @property CarbonImmutable|null $decided_at
+ * @property CarbonImmutable|null $created_at
+ * @property CarbonImmutable|null $updated_at
  * @property-read Employee $employee
  * @property-read LeaveType $type
  */
