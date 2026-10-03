@@ -29,6 +29,7 @@ use Modules\Organization\Models\Department;
 use Modules\Organization\Models\Location;
 use Modules\Organization\Models\Position;
 use Modules\Organization\Models\Team;
+use Modules\Shared\Support\Filters;
 
 final class EmployeeController extends Controller
 {
@@ -40,7 +41,7 @@ final class EmployeeController extends Controller
 
         /** @var User $user */
         $user = $request->user();
-        $filters = $request->only(['search', 'status', 'department_id', 'team_id', 'employment_type']);
+        $filters = Filters::only($request, ['search', 'status', 'department_id', 'team_id', 'employment_type']);
 
         $employees = Employee::query()
             ->with(['department:id,name', 'team:id,name', 'position:id,title', 'location:id,name'])

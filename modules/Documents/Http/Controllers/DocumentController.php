@@ -20,11 +20,13 @@ use Modules\Documents\Http\Requests\UploadDocumentRequest;
 use Modules\Documents\Http\Resources\DocumentPresenter;
 use Modules\Documents\Models\Document;
 use Modules\Documents\Models\Folder;
+use Modules\Documents\Services\DocumentManagers;
 use Modules\Employees\Models\Employee;
 use Modules\Identity\Models\User;
 use Modules\Organization\Models\Department;
 use Modules\Organization\Models\Team;
 use Modules\Shared\Contracts\ProjectMembership;
+use Modules\Shared\Support\Filters;
 
 final class DocumentController extends Controller
 {
@@ -34,12 +36,16 @@ final class DocumentController extends Controller
 
         /** @var User $user */
         $user = $request->user();
-        $filters = $request->only(['search', 'folder_id', 'category', 'tag', 'visibility']);
+        $filters = Filters::only($request, ['search', 'folder_id', 'category', 'tag', 'visibility']);
 
         $documents = Document::query()
             ->with(['folder:id,name', 'uploader:id,name', 'employee:id,first_name,last_name'])
             ->visibleTo($user)
-            ->when($filters['search'] ?? null, fn ($q, string $s) => $q->where(fn ($w) => $w->where('title', 'like', "%{$s}%")->orWhere('description', 'like', "%{$s}%")))
+            ->when($filters['search'] ?? null, function ($q, string $s) {
+                $like = '%'.Filters::escapeLike($s).'%';
+
+                $q->where(fn ($w) => $w->whereRaw("title like ? escape '!'", [$like])->orWhereRaw("description like ? escape '!'", [$like]));
+            })
             ->when($filters['folder_id'] ?? null, fn ($q, $v) => $q->where('folder_id', $v))
             ->when($filters['category'] ?? null, fn ($q, $v) => $q->where('category', $v))
             ->when($filters['tag'] ?? null, fn ($q, string $v) => $q->whereJsonContains('tags', $v))
@@ -62,7 +68,7 @@ final class DocumentController extends Controller
             ],
             'can' => [
                 'upload' => Gate::allows('documents.upload'),
-                'manage' => Gate::allows('documents.manage'),
+                'manage' => DocumentManagers::managesAll($user),
             ],
         ]);
     }
@@ -168,7 +174,7 @@ final class DocumentController extends Controller
             'teams' => Team::query()->orderBy('name')->get(['id', 'name'])->map(fn (Team $t) => ['value' => $t->id, 'label' => $t->name])->all(),
             'users' => Employee::query()->employed()->whereNotNull('user_id')->orderBy('first_name')->get(['user_id', 'first_name', 'last_name'])
                 ->map(fn (Employee $e) => ['value' => $e->user_id, 'label' => $e->full_name])->all(),
-            'employees' => Gate::allows('documents.manage')
+            'employees' => DocumentManagers::managesAll($user)
                 ? Employee::query()->employed()->orderBy('first_name')->get(['id', 'first_name', 'last_name'])->map(fn (Employee $e) => ['value' => $e->id, 'label' => $e->full_name])->all()
                 : [],
         ];

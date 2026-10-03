@@ -214,3 +214,36 @@ test('membership contract lists project options visible to the user', function (
     expect($options)->toBe([['value' => $public->id, 'label' => 'Alpha'], ['value' => $mine->id, 'label' => 'Mine']])
         ->and(collect($options)->pluck('value'))->not->toContain($private->id);
 });
+
+test('members cannot be added by someone who cannot open the project', function () {
+    $outsider = userWithRole('manager');
+    $project = Project::factory()->visibility(ProjectVisibility::Private)->create();
+    $target = userWithRole('employee');
+
+    $this->actingAs($outsider)->post(route('projects.members.store', $project), [
+        'employee_id' => employeeOf($target)->id, 'role' => 'member', 'allocation_percent' => 10,
+    ])->assertForbidden();
+});
+
+test('duplicate member is a validation error', function () {
+    [$pm, $project] = pmWithProject();
+    $target = employeeOf(userWithRole('employee'));
+    $payload = ['employee_id' => $target->id, 'role' => 'member', 'allocation_percent' => 10];
+
+    $this->actingAs($pm)->post(route('projects.members.store', $project), $payload)->assertSessionHasNoErrors();
+    $this->actingAs($pm)->post(route('projects.members.store', $project), $payload)->assertSessionHasErrors('employee_id');
+
+    expect(ProjectMember::query()->where('project_id', $project->id)->where('employee_id', $target->id)->count())->toBe(1);
+});
+
+test('members cannot be added to an archived project', function () {
+    [$pm, $project] = pmWithProject();
+    $project->update(['status' => ProjectStatus::Archived]);
+    $target = employeeOf(userWithRole('employee'));
+
+    $this->actingAs($pm)->post(route('projects.members.store', $project), [
+        'employee_id' => $target->id, 'role' => 'member', 'allocation_percent' => 10,
+    ])->assertSessionHasErrors('employee_id');
+
+    expect(ProjectMember::query()->where('project_id', $project->id)->where('employee_id', $target->id)->exists())->toBeFalse();
+});

@@ -67,6 +67,7 @@ final class ActiveProjectsReport extends AbstractReport
             ->leftJoinSub($members, 'm', 'm.project_id', '=', 'projects.id')
             ->leftJoin('employees as mgr', 'mgr.id', '=', 'projects.manager_employee_id')
             ->where('projects.status', 'active')
+            ->tap(fn (Builder $q) => $this->openableProjects($q, $user, 'projects'))
             ->when($ids !== null, fn (Builder $q) => $q->whereNotNull('m.member_count'))
             ->orderBy('projects.name')
             ->get(['projects.code', 'projects.name', 'projects.priority', 'projects.start_date', 'projects.end_date', 'm.member_count', 'mgr.first_name', 'mgr.last_name'])

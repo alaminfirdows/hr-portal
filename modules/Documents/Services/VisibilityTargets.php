@@ -24,7 +24,7 @@ final class VisibilityTargets
     public function apply(User $actor, array $data): array
     {
         $visibility = DocumentVisibility::from((string) $data['visibility']);
-        $manager = Gate::forUser($actor)->allows('documents.manage');
+        $manager = Gate::forUser($actor)->allows('documents.manage') && DocumentManagers::managesAll($actor);
         $employeeId = $this->org->employeeIdForUser($actor->id);
 
         if ($visibility === DocumentVisibility::Organization && ! $manager) {
@@ -66,7 +66,8 @@ final class VisibilityTargets
         unset($data['target_department_id'], $data['target_team_id'], $data['target_project_id']);
 
         if (! $manager) {
-            $data['employee_id'] = null;
+            // Not the actor's to set: leave an existing HR employee link untouched.
+            unset($data['employee_id']);
         }
 
         return $data;

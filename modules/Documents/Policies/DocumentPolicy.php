@@ -5,6 +5,7 @@ namespace Modules\Documents\Policies;
 use Illuminate\Support\Facades\Gate;
 use Modules\Documents\Enums\DocumentKind;
 use Modules\Documents\Models\Document;
+use Modules\Documents\Services\DocumentManagers;
 use Modules\Identity\Models\User;
 
 final class DocumentPolicy
@@ -42,7 +43,7 @@ final class DocumentPolicy
     {
         $gate = Gate::forUser($user);
 
-        return $gate->allows('documents.manage')
+        return ($gate->allows('documents.manage') && DocumentManagers::managesEmployee($user, $document->employee_id))
             || ($document->uploaded_by === $user->id && $gate->allows('documents.upload'));
     }
 }

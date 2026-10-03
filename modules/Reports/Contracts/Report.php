@@ -29,6 +29,11 @@ interface Report
     public function permission(): string;
 
     /**
+     * Whether the user may open this report: reports.view plus {@see permission()}, at the scope the report needs.
+     */
+    public function accessibleBy(User $user): bool;
+
+    /**
      * @return list<array{key: string, label: string, type: 'date'|'department'|'year'}>
      */
     public function filters(): array;

@@ -368,3 +368,29 @@ test('leave:remind-approvers notifies approvers of requests pending over 2 days'
     Notification::assertSentTo($manager, ApprovalReminderNotification::class, fn ($n) => $n->count === 1);
     Notification::assertNotSentTo($hr, ApprovalReminderNotification::class);
 });
+
+test('payroll reports need payroll.manage at all scope', function () {
+    $scoped = userWithPermissions(['reports.view' => 'all', 'payroll.manage' => 'team']);
+
+    foreach (['payroll.components', 'payroll.salary_distribution'] as $key) {
+        $this->actingAs($scoped)->get(route('reports.show', $key))->assertForbidden();
+        $this->actingAs($scoped)->get(route('reports.export', $key))->assertForbidden();
+    }
+
+    $this->actingAs($scoped)->get(route('reports.index'))
+        ->assertInertia(fn ($page) => $page->where('groups', fn ($g) => ! collect($g)->pluck('group')->contains('Payroll')));
+});
+
+test('project reports hide private projects from non members', function () {
+    $manager = userWithRole('manager');
+    $mine = Employee::factory()->create(['manager_id' => employeeOf($manager)->id]);
+    forgetHierarchy();
+    $public = Project::factory()->create(['status' => 'active', 'name' => 'Open']);
+    $private = Project::factory()->create(['status' => 'active', 'name' => 'Secret', 'visibility' => 'private']);
+    ProjectMember::factory()->create(['project_id' => $public->id, 'employee_id' => $mine->id]);
+    ProjectMember::factory()->create(['project_id' => $private->id, 'employee_id' => $mine->id]);
+
+    expect(collect(reportRows('projects.active', $manager))->pluck('name')->all())->toBe(['Open']);
+    expect(collect(reportRows('projects.workload', $manager))->firstWhere('code', $mine->employee_code)['projects'])->toBe(1);
+    expect(collect(reportRows('projects.active', userWithRole('hr')))->pluck('name')->all())->toContain('Secret');
+});

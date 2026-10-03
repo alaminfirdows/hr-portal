@@ -55,6 +55,8 @@ final class ProjectMemberController extends Controller
     public function destroy(Request $request, Project $project, ProjectMember $member, RemoveProjectMember $remove): RedirectResponse
     {
         $this->ensureBelongs($project, $member);
+        Gate::authorize('projects.view');
+        Gate::authorize('view', $project);
         Gate::authorize('manageMembers', [$project, $member->employee_id]);
 
         $remove->handle($member, $request->user());
