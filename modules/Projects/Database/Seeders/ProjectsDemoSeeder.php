@@ -7,13 +7,11 @@ use Modules\Employees\Models\Employee;
 use Modules\Projects\Actions\AddProjectMember;
 use Modules\Projects\Actions\CreateProject;
 use Modules\Projects\Actions\SaveProjectField;
-use Modules\Projects\Enums\FieldType;
 use Modules\Projects\Enums\MemberRole;
 use Modules\Projects\Enums\ProjectPriority;
 use Modules\Projects\Enums\ProjectStatus;
 use Modules\Projects\Enums\ProjectVisibility;
 use Modules\Projects\Models\Project;
-use Modules\Projects\Models\ProjectFieldDefinition;
 
 /**
  * Eight demo projects with mixed visibility, members and custom field values.
@@ -33,9 +31,7 @@ class ProjectsDemoSeeder extends Seeder
             return;
         }
 
-        $saveField->handle(new ProjectFieldDefinition, ['key' => 'client_name', 'label' => 'Client', 'type' => FieldType::Text->value, 'is_required' => false, 'sort' => 10]);
-        $saveField->handle(new ProjectFieldDefinition, ['key' => 'project_type', 'label' => 'Project Type', 'type' => FieldType::Select->value, 'options' => ['Internal', 'Client', 'R&D'], 'is_required' => false, 'sort' => 20]);
-        $saveField->handle(new ProjectFieldDefinition, ['key' => 'technology', 'label' => 'Technology', 'type' => FieldType::Text->value, 'is_required' => false, 'sort' => 30]);
+        $this->call(ProjectFieldSeeder::class);
 
         $named = fn (string $email): ?Employee => $employees->firstWhere('email', $email);
         $others = $employees->reject(fn (Employee $e) => $e->id === $pm->id)->values();

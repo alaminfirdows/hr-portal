@@ -3,6 +3,7 @@
 namespace Modules\Projects;
 
 use Illuminate\Support\Facades\Gate;
+use Modules\Projects\Database\Seeders\ProjectFieldSeeder;
 use Modules\Projects\Database\Seeders\ProjectsDemoSeeder;
 use Modules\Projects\Models\Project;
 use Modules\Projects\Policies\ProjectPolicy;
@@ -47,6 +48,11 @@ class ProjectsServiceProvider extends ModuleServiceProvider
     public function dashboardWidgets(): array
     {
         return [MyProjectsWidget::class, ActiveProjectsWidget::class];
+    }
+
+    public function seeders(): array
+    {
+        return [ProjectFieldSeeder::class];
     }
 
     public function demoSeeders(): array

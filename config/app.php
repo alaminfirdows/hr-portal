@@ -29,6 +29,13 @@ return [
     'env' => env('APP_ENV', 'production'),
 
     // Run DemoSeeder from `db:seed`. Defaults on in local.
+    // Created by Identity's InitialAdminSeeder on a fresh install. Skipped when email or password is empty.
+    'initial_admin' => [
+        'name' => env('INITIAL_ADMIN_NAME', 'Administrator'),
+        'email' => env('INITIAL_ADMIN_EMAIL'),
+        'password' => env('INITIAL_ADMIN_PASSWORD'),
+    ],
+
     'seed_demo' => (bool) env('SEED_DEMO', env('APP_ENV', 'production') === 'local'),
 
     /*

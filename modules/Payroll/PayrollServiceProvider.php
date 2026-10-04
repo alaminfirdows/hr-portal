@@ -3,6 +3,7 @@
 namespace Modules\Payroll;
 
 use Modules\Payroll\Database\Seeders\PayrollDemoSeeder;
+use Modules\Payroll\Database\Seeders\PayrollSetupSeeder;
 use Modules\Payroll\Widgets\LatestPayslipWidget;
 use Modules\Payroll\Widgets\PayrollStatusWidget;
 use Modules\Shared\Support\ModuleServiceProvider;
@@ -48,6 +49,11 @@ class PayrollServiceProvider extends ModuleServiceProvider
     public function notificationTypes(): array
     {
         return ['payroll.payslip_available' => 'A new payslip is available'];
+    }
+
+    public function seeders(): array
+    {
+        return [PayrollSetupSeeder::class];
     }
 
     public function demoSeeders(): array

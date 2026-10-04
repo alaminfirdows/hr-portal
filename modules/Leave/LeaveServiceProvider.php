@@ -7,6 +7,7 @@ use Modules\Leave\Console\AccrueLeaveCommand;
 use Modules\Leave\Console\AllocateLeaveCommand;
 use Modules\Leave\Console\RemindApproversCommand;
 use Modules\Leave\Database\Seeders\LeaveDemoSeeder;
+use Modules\Leave\Database\Seeders\LeaveTypeSeeder;
 use Modules\Leave\Services\EloquentLeaveCalendar;
 use Modules\Leave\Widgets\MyLeaveBalanceWidget;
 use Modules\Leave\Widgets\OnLeaveTodayWidget;
@@ -51,6 +52,11 @@ class LeaveServiceProvider extends ModuleServiceProvider
     public function dashboardWidgets(): array
     {
         return [MyLeaveBalanceWidget::class, PendingApprovalsWidget::class, OnLeaveTodayWidget::class];
+    }
+
+    public function seeders(): array
+    {
+        return [LeaveTypeSeeder::class];
     }
 
     public function demoSeeders(): array

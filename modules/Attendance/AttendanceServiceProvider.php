@@ -5,6 +5,7 @@ namespace Modules\Attendance;
 use Illuminate\Console\Scheduling\Schedule;
 use Modules\Attendance\Console\FinalizeAttendanceCommand;
 use Modules\Attendance\Database\Seeders\AttendanceDemoSeeder;
+use Modules\Attendance\Database\Seeders\ShiftSeeder;
 use Modules\Attendance\Listeners\ClearLeaveDays;
 use Modules\Attendance\Listeners\MarkLeaveDays;
 use Modules\Attendance\Services\EloquentAttendanceSummary;
@@ -51,6 +52,11 @@ class AttendanceServiceProvider extends ModuleServiceProvider
     public function dashboardWidgets(): array
     {
         return [MyAttendanceTodayWidget::class, TeamAttendanceTodayWidget::class, LateTodayWidget::class];
+    }
+
+    public function seeders(): array
+    {
+        return [ShiftSeeder::class];
     }
 
     public function demoSeeders(): array

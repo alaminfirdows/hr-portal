@@ -14,6 +14,11 @@ Domain rules: `docs/PROJECT_CONTEXT.md`. Design: `docs/superpowers/specs/`. Phas
 - Cross-module access: only through `Modules\Shared\Contracts\*` (null impl in Shared, real impl bound by owner module) or events. Never import another module's internals, except Identity `User`, Employees `Employee`, AccessControl `Access`. Reports module may read other tables.
 - After adding permissions: `php artisan access:sync`. Default role matrix: `modules/AccessControl/Database/Seeders/AccessControlSeeder.php`.
 
+## Seeding
+
+- `seeders()` = base, production-safe, idempotent reference data (roles, leave types, shift, pay setup, project fields, initial admin from `INITIAL_ADMIN_*`). Never overwrite existing rows.
+- `demoSeeders()` = fake people/data, local only (`SEED_DEMO`). Call the base seeder first; guard on demo data, not reference tables.
+
 ## Backend rules
 
 - Authorize: `Gate::authorize('perm.key', $employee?)`. Scopes own/team/department/all resolved by `Access`. Lists: `->withinIds($access->visibleEmployeeIds($user, 'perm.key'))`.

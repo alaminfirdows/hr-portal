@@ -8,7 +8,6 @@ use Modules\Employees\Models\Employee;
 use Modules\Identity\Models\User;
 use Modules\Leave\Actions\AccrueMonthlyBalances;
 use Modules\Leave\Actions\AllocateYearlyBalances;
-use Modules\Leave\Enums\AccrualMethod;
 use Modules\Leave\Enums\ApprovalDecision;
 use Modules\Leave\Enums\ApprovalStepRole;
 use Modules\Leave\Enums\DayPart;
@@ -20,7 +19,7 @@ use Modules\Leave\Services\LeaveBalanceService;
 use Modules\Leave\Services\LeaveDayCalculator;
 
 /**
- * Leave types, this year's balances and ~40 requests of mixed status with balances kept consistent.
+ * This year's balances and ~40 requests of mixed status with balances kept consistent.
  */
 class LeaveDemoSeeder extends Seeder
 {
@@ -30,11 +29,11 @@ class LeaveDemoSeeder extends Seeder
         LeaveBalanceService $balances,
         LeaveDayCalculator $calculator,
     ): void {
-        if (LeaveType::query()->exists()) {
+        if (LeaveRequest::query()->exists()) {
             return;
         }
 
-        $this->types();
+        $this->call(LeaveTypeSeeder::class);
 
         $now = CarbonImmutable::now();
         $year = $now->year;
@@ -134,36 +133,6 @@ class LeaveDemoSeeder extends Seeder
             }
 
             $made++;
-        }
-    }
-
-    private function types(): void
-    {
-        $defs = [
-            ['Annual leave', 'AL', 'blue', true, false, true, AccrualMethod::Yearly, 18, 5, ['manager', 'hr'], null],
-            ['Sick leave', 'SL', 'red', true, false, true, AccrualMethod::Yearly, 10, 0, ['manager'], null],
-            ['Casual leave', 'CL', 'amber', true, false, true, AccrualMethod::Monthly, 8, 0, ['manager'], 3],
-            ['Maternity leave', 'ML', 'purple', true, true, false, AccrualMethod::Yearly, 112, 0, ['manager', 'hr'], null],
-            ['Paternity leave', 'PL', 'green', true, false, false, AccrualMethod::Yearly, 10, 0, ['manager', 'hr'], null],
-            ['Unpaid leave', 'UL', 'gray', false, false, true, AccrualMethod::None, null, 0, ['manager', 'hr'], null],
-        ];
-
-        foreach ($defs as [$name, $code, $color, $paid, $attachment, $half, $method, $quota, $cap, $steps, $max]) {
-            LeaveType::query()->create([
-                'name' => $name,
-                'code' => $code,
-                'color' => $color,
-                'is_paid' => $paid,
-                'requires_attachment' => $attachment,
-                'allow_half_day' => $half,
-                'accrual_method' => $method,
-                'annual_quota' => $quota,
-                'carry_forward_cap' => $cap,
-                'prorate_new_joiners' => true,
-                'approval_steps' => $steps,
-                'max_consecutive_days' => $max,
-                'is_active' => true,
-            ]);
         }
     }
 }

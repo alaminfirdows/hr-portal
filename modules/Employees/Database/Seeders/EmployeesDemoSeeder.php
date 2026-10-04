@@ -25,6 +25,7 @@ class EmployeesDemoSeeder extends Seeder
         'hr@example.com' => ['Hana', 'Rahman', 'hr', 'HR', 'People Operations', 'HR Manager'],
         'manager@example.com' => ['Maya', 'Chen', 'manager', 'ENG', 'Backend', 'Engineering Manager'],
         'pm@example.com' => ['Paul', 'Morgan', 'project_manager', 'ENG', null, 'Project Manager'],
+        'support@example.com' => ['Sam', 'Okafor', 'support', 'HR', null, null],
         'employee@example.com' => ['Eli', 'Turner', 'employee', 'ENG', 'Backend', 'Software Engineer'],
     ];
 

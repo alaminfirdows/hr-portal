@@ -6,6 +6,7 @@ use Illuminate\Auth\Events\Login;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Routing\Router;
 use Modules\Identity\Console\PruneInvitationsCommand;
+use Modules\Identity\Database\Seeders\InitialAdminSeeder;
 use Modules\Identity\Http\Middleware\EnsureUserIsActive;
 use Modules\Identity\Listeners\RecordLastLogin;
 use Modules\Shared\Support\ModuleServiceProvider;
@@ -21,6 +22,11 @@ class IdentityServiceProvider extends ModuleServiceProvider
     public function seedOrder(): int
     {
         return 15;
+    }
+
+    public function seeders(): array
+    {
+        return [InitialAdminSeeder::class];
     }
 
     public function permissions(): array

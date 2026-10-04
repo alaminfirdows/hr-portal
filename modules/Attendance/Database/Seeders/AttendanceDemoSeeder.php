@@ -14,7 +14,7 @@ use Modules\Shared\Contracts\LeaveCalendar;
 use Modules\Shared\Contracts\WorkCalendar;
 
 /**
- * Default 09:00-18:00 shift and 30 days of history. Present rows come first, then the same
+ * 30 days of history. Present rows come first, then the same
  * finalize pass that runs nightly fills weekends, holidays, approved leave and absences.
  */
 class AttendanceDemoSeeder extends Seeder
@@ -25,20 +25,12 @@ class AttendanceDemoSeeder extends Seeder
         WorkCalendar $calendar,
         LeaveCalendar $leave,
     ): void {
-        if (Shift::query()->exists()) {
+        if (AttendanceRecord::query()->exists()) {
             return;
         }
 
-        $shift = Shift::query()->create([
-            'name' => 'Standard day',
-            'start_time' => '09:00:00',
-            'end_time' => '18:00:00',
-            'grace_minutes' => 15,
-            'half_day_minutes' => 240,
-            'overtime_after_minutes' => 30,
-            'is_default' => true,
-            'is_active' => true,
-        ]);
+        $this->call(ShiftSeeder::class);
+        $shift = Shift::query()->where('is_default', true)->firstOrFail();
 
         $employees = Employee::query()->employed()->orderBy('id')->get(['id', 'joined_on']);
         $today = CarbonImmutable::today();
